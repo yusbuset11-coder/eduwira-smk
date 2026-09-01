@@ -76,7 +76,7 @@ def update_school_stock(spreadsheet_id, sheet_name, prod_id_val, new_stock):
 
 # --- KONFIGURASI HALAMAN UTAMA ---
 st.set_page_config(
-    page_title="EDUWIRA SMK - Ekosistem Digital Vokasi",
+    page_title="EDUWIRA SMK - Ekosistem Digital Untuk Kewirausahaan SMK",
     page_icon="🚀",
     layout="wide",
 )
