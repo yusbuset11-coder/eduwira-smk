@@ -162,7 +162,7 @@ if not st.session_state.logged_in:
         with st.form("form_login_supabase"):
             input_user = st.text_input(
                 "Token / Email",
-                placeholder="Contoh: DINAS-01, KWANYAR-01, atau SMKN2-BKL",
+                placeholder="Contoh: yustinus-budi@gmail.com atau EduwiraSMK-01",
             )
             st.markdown("<div style='height: 8px;'></div>", unsafe_allow_html=True)
             btn_masuk = st.form_submit_button("🚀 Masuk Ekosistem", use_container_width=True)
