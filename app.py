@@ -4,15 +4,9 @@ from google.oauth2.service_account import Credentials
 import gspread
 import pandas as pd
 import streamlit as st
-from supabase import create_client
 
-# --- INISIALISASI KONEKSI SUPABASE ---
-try:
-    url = st.secrets["supabase"]["url"]
-    key = st.secrets["supabase"]["key"]
-    supabase = create_client(url, key)
-except Exception as e:
-    supabase = None
+# --- KONFIGURASI MASTER SPREADSHEET REGISTRY ---
+MASTER_SPREADSHEET_ID = "14nb2iWD92_Tyf9yFQr97BNL4VQjBxJMtbSOm-6lBrMc"
 
 # --- KONFIGURASI GOOGLE SHEETS (GSPREAD) ---
 def get_gspread_client():
@@ -159,10 +153,10 @@ if not st.session_state.logged_in:
 
     col1, col2, col3 = st.columns([0.5, 3, 0.5])
     with col2:
-        with st.form("form_login_supabase"):
+        with st.form("form_login_gs"):
             input_user = st.text_input(
                 "Token / Email",
-                placeholder="Contoh: EduwiraSMK-01 atau yustinus-budi@gmail.com",
+                placeholder="Contoh: EDU1234 atau yustinussetyanta08@dinas.belajar.id",
             )
             st.markdown("<div style='height: 8px;'></div>", unsafe_allow_html=True)
             btn_masuk = st.form_submit_button("🚀 Masuk Ekosistem", use_container_width=True)
@@ -170,27 +164,24 @@ if not st.session_state.logged_in:
             if btn_masuk:
                 if not input_user:
                     st.warning("⚠️ Mohon masukkan Token atau Email terlebih dahulu.")
-                elif supabase is None:
-                    st.error("❌ Koneksi Supabase belum terinisialisasi.")
                 else:
-                    with st.spinner("Memverifikasi data dari Supabase..."):
+                    with st.spinner("Memverifikasi data dari Google Sheets..."):
                         try:
-                            response = supabase.table("master_registry").select("*").execute()
-                            data_registry = response.data
+                            df_reg = get_school_records(MASTER_SPREADSHEET_ID, "DATABASE_MASTER_REGISTRY")
                         except Exception as e:
-                            data_registry = []
-                            st.error(f"Gagal terhubung ke Supabase: {e}")
+                            df_reg = pd.DataFrame()
+                            st.error(f"Gagal membaca Google Sheets: {e}")
 
-                    if data_registry:
-                        df_reg = pd.DataFrame(data_registry)
+                    if not df_reg.empty:
                         df_reg.columns = df_reg.columns.str.strip()
+                        cols_lower = {c.lower(): c for c in df_reg.columns}
 
-                        token_col = "token" if "token" in df_reg.columns else df_reg.columns[0]
-                        email_col = "email" if "email" in df_reg.columns else df_reg.columns[1]
-                        admin_col = "admin_nama" if "admin_nama" in df_reg.columns else df_reg.columns[2]
-                        sekolah_col = "nama_sekolah" if "nama_sekolah" in df_reg.columns else df_reg.columns[1]
-                        role_col = "role" if "role" in df_reg.columns else None
-                        sheet_col = "spreadsheet_id" if "spreadsheet_id" in df_reg.columns else None
+                        token_col = cols_lower.get("token_unik", cols_lower.get("token", df_reg.columns[0]))
+                        email_col = cols_lower.get("email", df_reg.columns[3] if len(df_reg.columns) > 3 else df_reg.columns[1])
+                        admin_col = cols_lower.get("admin_pj", cols_lower.get("admin_nama", df_reg.columns[2]))
+                        sekolah_col = cols_lower.get("nama_sekolah", df_reg.columns[1])
+                        role_col = cols_lower.get("role", None)
+                        sheet_col = cols_lower.get("spreadsheet_id", None)
 
                         matched = df_reg[
                             (df_reg[token_col].astype(str).str.strip().str.lower() == input_user.strip().lower()) |
@@ -216,23 +207,21 @@ if not st.session_state.logged_in:
                             st.success(f"🎉 Berhasil masuk! Selamat datang, {st.session_state.admin_nama} ({st.session_state.nama_sekolah}).")
                             st.rerun()
                         else:
-                            st.error("❌ Token atau Email tidak ditemukan di `master_registry`.")
+                            st.error("❌ Token atau Email tidak ditemukan di `DATABASE_MASTER_REGISTRY`.")
                     else:
-                        st.error("❌ Tabel `master_registry` kosong.")
+                        st.error("❌ Data `DATABASE_MASTER_REGISTRY` kosong atau gagal dimuat.")
 
 # --- KONDISI 2: SUDAH LOGIN ---
 else:
     # --- SIDEBAR INFORMASI AKUN & NAVIGASI ---
     st.sidebar.markdown(f"👤 **Admin:** {st.session_state.admin_nama}")
 
-# Jika rolenya Pengawas, tampilkan "Cabdin (Pengawas)", jika bukan tampilkan nama sekolah aslinya
     unit_tampil = (
         "Cabdin (Pengawas)"
         if st.session_state.role.lower() == "pengawas"
         else st.session_state.nama_sekolah
     )
     st.sidebar.markdown(f"🏫 **Unit:** {unit_tampil}")
-
     st.sidebar.markdown(f"🛡️ **Role:** `{st.session_state.role}`")
     st.sidebar.divider()
 
@@ -270,7 +259,7 @@ else:
         st.rerun()
 
     # ==========================================
-    # LOGIC KELOMPOK 1: MENU PENGAWAS (MONITORING LINTAS SPREADSHEET)
+    # LOGIC KELOMPOK 1: MENU PENGAWAS
     # ==========================================
     if is_pengawas:
         if menu == "📊 Dashboard Rekap PS":
@@ -278,14 +267,16 @@ else:
             st.write("Memantau rekapitulasi produk dan transaksi langsung dari Google Spreadsheet masing-masing sekolah.")
 
             try:
-                res_reg = supabase.table("master_registry").select("*").execute()
-                df_reg = pd.DataFrame(res_reg.data) if res_reg.data else pd.DataFrame()
+                df_reg = get_school_records(MASTER_SPREADSHEET_ID, "DATABASE_MASTER_REGISTRY")
             except Exception as e:
-                st.error(f"Gagal mengambil data registry dari Supabase: {e}")
+                st.error(f"Gagal mengambil data registry dari Google Sheets: {e}")
                 df_reg = pd.DataFrame()
 
             if not df_reg.empty:
-                role_col = "role" if "role" in df_reg.columns else None
+                df_reg.columns = df_reg.columns.str.strip()
+                cols_lower = {c.lower(): c for c in df_reg.columns}
+                role_col = cols_lower.get("role", None)
+
                 if role_col:
                     df_sekolah = df_reg[df_reg[role_col].astype(str).str.strip().str.lower() != "pengawas"]
                 else:
@@ -296,9 +287,9 @@ else:
                 total_prod_all = 0
                 total_trx_all = 0
 
-                sekolah_col_name = "nama_sekolah" if "nama_sekolah" in df_reg.columns else df_reg.columns[1]
-                admin_col_name = "admin_nama" if "admin_nama" in df_reg.columns else df_reg.columns[2]
-                sheet_id_col = "spreadsheet_id" if "spreadsheet_id" in df_reg.columns else None
+                sekolah_col_name = cols_lower.get("nama_sekolah", df_reg.columns[1])
+                admin_col_name = cols_lower.get("admin_pj", cols_lower.get("admin_nama", df_reg.columns[2]))
+                sheet_id_col = cols_lower.get("spreadsheet_id", None)
 
                 for _, row in df_sekolah.iterrows():
                     sch_name = str(row.get(sekolah_col_name, "Sekolah"))
@@ -310,14 +301,13 @@ else:
                     trx_count = 0
 
                     if sch_sheet_id:
-                        # Tarik data dari Google Spreadsheet masing-masing sekolah
                         df_p_sch = get_school_records(sch_sheet_id, "PRODUK_SMK")
                         df_t_sch = get_school_records(sch_sheet_id, "TRANSAKSI")
 
                         prod_count = len(df_p_sch)
                         trx_count = len(df_t_sch)
 
-                        omzet_col = "total_harga" if "total_harga" in df_t_sch.columns else ("Total_Harga" if "Total_Harga" in df_t_sch.columns else None)
+                        omzet_col = next((c for c in df_t_sch.columns if c.lower() in ["total_harga", "totalharga"]), None)
                         if omzet_col and not df_t_sch.empty:
                             omzet_sekolah = pd.to_numeric(df_t_sch[omzet_col], errors='coerce').sum()
 
@@ -352,15 +342,14 @@ else:
                 else:
                     st.info("Belum ada data rekapitulasi sekolah.")
             else:
-                st.warning("Tabel `master_registry` kosong di Supabase.")
+                st.warning("Tabel `DATABASE_MASTER_REGISTRY` kosong.")
 
         elif menu == "🏫 Daftar SMK Binaan":
-            st.markdown("### 🏫 Daftar Master Registry SMK Binaan (Supabase)")
+            st.markdown("### 🏫 Daftar Master Registry SMK Binaan (Google Sheets)")
             st.write("Daftar akun sekolah binaan beserta Spreadsheet ID masing-masing.")
 
             try:
-                res = supabase.table("master_registry").select("*").execute()
-                df_reg = pd.DataFrame(res.data) if res.data else pd.DataFrame()
+                df_reg = get_school_records(MASTER_SPREADSHEET_ID, "DATABASE_MASTER_REGISTRY")
             except Exception:
                 df_reg = pd.DataFrame()
 
@@ -372,14 +361,14 @@ else:
                 st.info("Data registry belum tersedia.")
 
     # ==========================================
-    # LOGIC KELOMPOK 2: MENU SEKOLAH MANDIRI (GOOGLE SHEETS MASING-MASING)
+    # LOGIC KELOMPOK 2: MENU SEKOLAH MANDIRI
     # ==========================================
     else:
         nama_sekolah_kini = st.session_state.nama_sekolah
         active_spreadsheet_id = st.session_state.spreadsheet_id
 
         if not active_spreadsheet_id:
-            st.error("❌ `spreadsheet_id` belum diatur untuk sekolah ini di tabel `master_registry` Supabase. Hubungi Pengawas.")
+            st.error("❌ `spreadsheet_id` belum diatur untuk sekolah ini di tabel `DATABASE_MASTER_REGISTRY`. Hubungi Pengawas.")
         else:
             if menu == "🏠 Dashboard Utama":
                 st.markdown(f'<div style="color: #f3f4f6; font-size: 20px; font-weight: 700; margin-bottom: 10px;">Dashboard Utama - {nama_sekolah_kini}</div>', unsafe_allow_html=True)
@@ -390,10 +379,9 @@ else:
 
                 total_prod = len(df_p)
                 total_trx_count = len(df_t)
-                omzet_col = "total_harga" if "total_harga" in df_t.columns else ("Total_Harga" if "Total_Harga" in df_t.columns else None)
+                omzet_col = next((c for c in df_t.columns if c.lower() in ["total_harga", "totalharga"]), None)
                 total_omzet = pd.to_numeric(df_t[omzet_col], errors='coerce').sum() if (not df_t.empty and omzet_col) else 0
 
-                # Berikan bobot lebih besar pada kolom ketiga (misal: [1, 1, 1.4])
                 col_a, col_b, col_c = st.columns([1, 1, 1.4])
                 with col_a:
                     st.metric(label="Total Produk Terdaftar", value=f"{total_prod} Produk", delta="Aktif")
@@ -511,12 +499,11 @@ TOTAL BAYAR  : Rp {t['total']:,.0f}
 
                 if not st.session_state.last_trx:
                     if not df_p.empty:
-                        name_key = "nama_produk" if "nama_produk" in df_p.columns else ("Nama_Produk" if "Nama_Produk" in df_p.columns else df_p.columns[2])
+                        name_key = next((c for c in df_p.columns if c.lower() in ["nama_produk", "namaproduk"]), df_p.columns[2] if len(df_p.columns) > 2 else df_p.columns[0])
                         list_produk = df_p[name_key].tolist()
                         pilih_produk = st.selectbox("Pilih Produk", list_produk)
 
                         selected_row = df_p[df_p[name_key] == pilih_produk].iloc[0]
-                        # Mencari kolom secara otomatis tanpa peduli huruf besar/kecil
                         price_key = next((c for c in df_p.columns if c.lower() == "harga"), "Harga")
                         stock_key = next((c for c in df_p.columns if c.lower() == "stok"), "Stok")
 
@@ -550,11 +537,9 @@ TOTAL BAYAR  : Rp {t['total']:,.0f}
                                     "total_harga": float(total_harga),
                                 }
                                 
-                                # Append transaksi ke sheet TRANSAKSI
                                 succ_trx = append_school_record(active_spreadsheet_id, "TRANSAKSI", new_trx_row)
                                 
-                                # Update stok di sheet PRODUK_SMK
-                                prod_id_key = "id_produk" if "id_produk" in selected_row else selected_row.index[0]
+                                prod_id_key = next((c for c in selected_row.index if c.lower() in ["id_produk", "idproduk"]), selected_row.index[0])
                                 prod_id_val = selected_row[prod_id_key]
                                 new_stock = max(0, stok_tersedia - int(jumlah_beli))
                                 update_school_stock(active_spreadsheet_id, "PRODUK_SMK", prod_id_val, new_stock)
@@ -587,8 +572,8 @@ TOTAL BAYAR  : Rp {t['total']:,.0f}
                     st.markdown("#### Riwayat Transaksi Penjualan")
                     st.dataframe(df_t, use_container_width=True)
 
-                    omzet_col = "total_harga" if "total_harga" in df_t.columns else ("Total_Harga" if "Total_Harga" in df_t.columns else None)
-                    qty_col = "jumlah_terjual" if "jumlah_terjual" in df_t.columns else ("Jumlah_Terjual" if "Jumlah_Terjual" in df_t.columns else None)
+                    omzet_col = next((c for c in df_t.columns if c.lower() in ["total_harga", "totalharga"]), None)
+                    qty_col = next((c for c in df_t.columns if c.lower() in ["jumlah_terjual", "jumlahterjual"]), None)
 
                     total_omzet_rep = pd.to_numeric(df_t[omzet_col], errors='coerce').sum() if omzet_col else 0
                     total_item_sold = pd.to_numeric(df_t[qty_col], errors='coerce').sum() if qty_col else len(df_t)
