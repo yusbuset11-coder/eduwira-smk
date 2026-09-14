@@ -6,7 +6,7 @@ import pandas as pd
 import streamlit as st
 
 # --- KONFIGURASI MASTER SPREADSHEET REGISTRY ---
-MASTER_SPREADSHEET_ID = "14nb2iWD92_Tyf9yFQr97BNL4VQjBxJMtbSOm-6lBrMc"
+MASTER_SPREADSHEET_ID = "14nb2iWD92_TYf9yFQr97BNL4VQjBxJMtbSOm-6IBrMc"
 
 # --- KONFIGURASI GOOGLE SHEETS (GSPREAD) ---
 def get_gspread_client():
