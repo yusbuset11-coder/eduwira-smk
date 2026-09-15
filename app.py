@@ -472,6 +472,7 @@ else:
                                     st.rerun()
                                 else:
                                     st.error(f"❌ Gagal menyimpan ke Google Spreadsheet. Detail Error: {err_msg}")
+struk_text = f"""
 ========================================
        STRUK PEMBELIAN / NOTA TeFa      
            {nama_sekolah_kini.upper()}       
