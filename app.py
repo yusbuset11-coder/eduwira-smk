@@ -603,12 +603,8 @@ TOTAL BAYAR  : Rp {t['total']:,.0f}
                         st.info(f"💵 Harga Satuan: Rp {harga_satuan:,.0f} | 📦 Stok Tersedia: {stok_tersedia}")
 
                         with st.form("form_transaksi_gs"):
-                            # Tambahkan input tanggal dan waktu transaksi
-                            col_t1, col_t2 = st.columns(2)
-                            with col_t1:
-                                tanggal_trx = st.date_input("Tanggal Transaksi", value=datetime.now().date())
-                            with col_t2:
-                                waktu_trx = st.time_input("Jam Transaksi", value=datetime.now().time())
+                            # Input tanggal saja, jam otomatis mengikuti waktu saat ini
+                            tanggal_trx = st.date_input("Tanggal Transaksi", value=datetime.now().date())
 
                             jumlah_beli = st.number_input(
                                 "Jumlah / Frekuensi",
@@ -625,9 +621,26 @@ TOTAL BAYAR  : Rp {t['total']:,.0f}
                             if submit_trx:
                                 id_trx = str(uuid.uuid4())[:8].upper()
                                 
-                                # Gabungkan tanggal dan waktu yang dipilih user
-                                gabung_waktu = datetime.combine(tanggal_trx, waktu_trx)
+                                # Gabungkan tanggal pilihan user dengan jam saat ini secara otomatis
+                                gabung_waktu = datetime.combine(tanggal_trx, datetime.now().time())
                                 waktu_sekarang = gabung_waktu.strftime("%Y-%m-%d %H:%M:%S")
+
+                                new_trx_row = {
+                                    "ID_Transaksi": id_trx,
+                                    "Tanggal": waktu_sekarang,
+                                    "Sekolah": nama_sekolah_kini,
+                                    "Nama_Produk": pilih_produk,
+                                    "Jumlah_Terjual": int(jumlah_beli),
+                                    "Total_Harga": float(total_harga),
+                                    "Pembeli": pembeli_input
+                                }
+                                
+                                succ_trx, err_msg = append_school_record(active_spreadsheet_id, "TRANSAKSI", new_trx_row)
+                                
+                                # Kurangi stok otomatis HANYA jika bukan produk jasa/layanan
+                                if not is_jasa:
+                                    new_stock = max(0, stok_tersedia - int(jumlah_beli))
+                                    update_school_stock_by_name(active_spreadsheet_id, "MASTER_PRODUK", pilih_produk, new_stock)
 
                                 new_trx_row = {
                                     "ID_Transaksi": id_trx,
