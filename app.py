@@ -410,31 +410,37 @@ else:
                 with tab2:
                     st.markdown("### ➕ Form Input Produk Baru")
                     
-                    # 1. Pilih Kategori (DI LUAR st.form agar sinkron secara dinamis)
-                    kategori = st.selectbox(
-                        "Kategori",
-                        [
-                            "Makanan & Minuman",
-                            "Kerajinan / Kriya",
-                            "Jasa & Layanan",
-                            "Teknologi / Elektronik",
-                            "Lainnya",
-                        ],
-                    )
+                    # 1. Ambil data master produk spesifik dari Google Spreadsheet sekolah yang login
+                    df_master_prod = get_school_records(active_spreadsheet_id, "MASTER_PRODUK")
                     
-                    # 2. Pilihan Nama Produk menyesuaikan Kategori yang dipilih
-                    if kategori == "Makanan & Minuman":
-                        pilihan_produk = ["Keripik Singkong", "Es Teh Manis", "Roti Bakar"]
-                    elif kategori == "Kerajinan / Kriya":
-                        pilihan_produk = ["Tas Tenun", "Hiasan Dinding", "Gantungan Kunci"]
-                    elif kategori == "Jasa & Layanan":
-                        pilihan_produk = ["Perbaikan Peralatan Listrik", "Pemasangan AC", "Servis Sepeda Motor", "Desain Banner"]
-                    elif kategori == "Teknologi / Elektronik":
-                        pilihan_produk = ["Neon Fleksibel", "Neon L Wire", "Joule Thief", "Running Text", "Kap Lampu Daun Agel"]
+                    if not df_master_prod.empty:
+                        # Normalisasi nama kolom agar aman (huruf kecil semua)
+                        df_master_prod.columns = df_master_prod.columns.str.strip().str.lower()
+                        
+                        # Cari nama kolom kategori dan nama produk secara fleksibel
+                        cat_col = next((c for c in df_master_prod.columns if "kategori" in c), df_master_prod.columns[0])
+                        prod_col = next((c for c in df_master_prod.columns if "produk" in c or "nama" in c), df_master_prod.columns[1])
+                        
+                        # Ambil daftar kategori unik dari spreadsheet sekolah
+                        list_kategori = df_master_prod[cat_col].dropna().unique().tolist()
+                        
+                        # Pilih Kategori
+                        kategori = st.selectbox("Kategori", list_kategori)
+                        
+                        # Filter nama produk berdasarkan kategori yang dipilih di dropdown
+                        filtered_df = df_master_prod[df_master_prod[cat_col] == kategori]
+                        list_pilihan_produk = filtered_df[prod_col].dropna().unique().tolist()
+                        
+                        # Pilih Nama Produk berdasarkan data spreadsheet
+                        if list_pilihan_produk:
+                            nama_produk = st.selectbox("Nama Produk", list_pilihan_produk)
+                        else:
+                            nama_produk = st.text_input("Nama Produk (Tidak ada produk di master, ketik manual)")
+                            
                     else:
-                        pilihan_produk = ["Produk Lainnya"]
-
-                    nama_produk = st.selectbox("Nama Produk", pilihan_produk)
+                        st.warning("⚠️ Sheet `MASTER_PRODUK` di Google Spreadsheet Anda belum ada atau masih kosong. Silakan buat sheet `MASTER_PRODUK` terlebih dahulu di Spreadsheet sekolah.")
+                        kategori = st.selectbox("Kategori", ["Makanan & Minuman", "Teknologi / Elektronik", "Lainnya"])
+                        nama_produk = st.text_input("Nama Produk")
 
                     # 3. Form input data angka, deskripsi, dan tombol simpan
                     with st.form("form_tambah_produk_gs", clear_on_submit=True):
@@ -466,18 +472,6 @@ else:
                                     st.rerun()
                                 else:
                                     st.error(f"❌ Gagal menyimpan ke Google Spreadsheet. Detail Error: {err_msg}")
-
-            elif menu == "💰 Catat Transaksi / Kasir":
-                st.markdown("### 💰 Pencatatan Transaksi & Cetak Struk")
-                st.write("Fitur kasir digital untuk mencatat penjualan dan menyimpannya langsung ke Google Spreadsheet Anda.")
-
-                df_p = get_school_records(active_spreadsheet_id, "PRODUK_SMK")
-
-                if st.session_state.last_trx:
-                    t = st.session_state.last_trx
-                    st.success("🎉 Transaksi berhasil dicatat dan disinkronkan ke Google Spreadsheet!")
-
-                    struk_text = f"""
 ========================================
        STRUK PEMBELIAN / NOTA TeFa      
            {nama_sekolah_kini.upper()}       
