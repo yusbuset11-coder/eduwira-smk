@@ -634,24 +634,7 @@ TOTAL BAYAR  : Rp {t['total']:,.0f}
                                     "Total_Harga": float(total_harga),
                                     "Pembeli": pembeli_input
                                 }
-                                
-                                succ_trx, err_msg = append_school_record(active_spreadsheet_id, "TRANSAKSI", new_trx_row)
-                                
-                                # Kurangi stok otomatis HANYA jika bukan produk jasa/layanan
-                                if not is_jasa:
-                                    new_stock = max(0, stok_tersedia - int(jumlah_beli))
-                                    update_school_stock_by_name(active_spreadsheet_id, "MASTER_PRODUK", pilih_produk, new_stock)
-
-                                new_trx_row = {
-                                    "ID_Transaksi": id_trx,
-                                    "Tanggal": waktu_sekarang,
-                                    "Sekolah": nama_sekolah_kini,
-                                    "Nama_Produk": pilih_produk,
-                                    "Jumlah_Terjual": int(jumlah_beli),
-                                    "Total_Harga": float(total_harga),
-                                    "Pembeli": pembeli_input
-                                }
-                                
+                                         
                                 succ_trx, err_msg = append_school_record(active_spreadsheet_id, "TRANSAKSI", new_trx_row)
                                 
                                 # Kurangi stok otomatis HANYA jika bukan produk jasa/layanan
