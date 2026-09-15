@@ -413,7 +413,108 @@ else:
                     t = st.session_state.last_trx
                     st.success("🎉 Transaksi berhasil dicatat dan disinkronkan ke Google Spreadsheet!")
 
-                    # --- FORMAT TEKS STRUK (DIGUNAKAN UNTUK PRATINJAU & DOWNLOAD) ---
+                    # --- PRATINJAU STRUK BERBASIS HTML MODERN (VISUAL KARTU RAPI) ---
+                    struk_html = f"""
+                    <!DOCTYPE html>
+                    <html>
+                    <head>
+                        <meta charset="utf-8">
+                        <style>
+                            body {{
+                                background-color: #ffffff;
+                                color: #1f2937;
+                                font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+                                margin: 0;
+                                padding: 10px;
+                                display: flex;
+                                justify-content: center;
+                            }}
+                            .receipt {{
+                                background-color: #ffffff;
+                                color: #1f2937;
+                                padding: 20px;
+                                border-radius: 12px;
+                                width: 100%;
+                                max-width: 380px;
+                                box-sizing: border-box;
+                                border: 1px solid #e5e7eb;
+                                box-shadow: 0 4px 15px rgba(0,0,0,0.08);
+                            }}
+                            .header {{
+                                text-align: center;
+                                border-bottom: 2px dashed #d1d5db;
+                                padding-bottom: 14px;
+                                margin-bottom: 14px;
+                            }}
+                            .title {{ font-size: 16px; font-weight: 800; color: #111827; letter-spacing: 0.5px; }}
+                            .school {{ font-size: 13px; font-weight: 700; color: #4f46e5; margin-top: 4px; }}
+                            .subtitle {{ font-size: 10px; color: #6b7280; margin-top: 2px; }}
+                            .details {{ font-size: 11px; color: #4b5563; margin-bottom: 14px; }}
+                            .row {{ display: flex; justify-content: space-between; margin-bottom: 4px; }}
+                            .item-section {{ border-top: 1px solid #e5e7eb; border-bottom: 1px solid #e5e7eb; padding: 10px 0; margin-bottom: 14px; }}
+                            .item-name {{ font-size: 12px; font-weight: 700; color: #111827; margin-bottom: 4px; }}
+                            .total-section {{ display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }}
+                            .total-label {{ font-size: 13px; font-weight: 700; color: #111827; }}
+                            .total-value {{ font-size: 15px; font-weight: 800; color: #059669; }}
+                            .footer {{ text-align: center; border-top: 2px dashed #d1d5db; padding-top: 12px; }}
+                            .footer-thx {{ font-size: 11px; font-weight: 600; color: #374151; }}
+                            .footer-app {{ font-size: 9px; color: #9ca3af; margin-top: 3px; }}
+                        </style>
+                    </head>
+                    <body>
+                        <div class="receipt">
+                            <div class="header">
+                                <div class="title">NOTA / STRUK PEMBELIAN</div>
+                                <div class="school">{nama_sekolah_kini.upper()}</div>
+                                <div class="subtitle">Program Teaching Factory (TeFa) SMK</div>
+                            </div>
+                            
+                            <div class="details">
+                                <div class="row">
+                                    <span>No. Transaksi:</span>
+                                    <strong style="color: #111827;">{t['id_trx']}</strong>
+                                </div>
+                                <div class="row">
+                                    <span>Tanggal:</span>
+                                    <span>{t['waktu']}</span>
+                                </div>
+                                <div class="row">
+                                    <span>Kasir / PJ:</span>
+                                    <span>{t['kasir']}</span>
+                                </div>
+                            </div>
+                            
+                            <div class="item-section">
+                                <div class="item-name">{t['produk']}</div>
+                                <div class="row" style="font-size: 11px; color: #4b5563; margin-bottom: 0;">
+                                    <span>{t['jumlah']} unit x Rp {t['harga_satuan']:,.0f}</span>
+                                    <strong style="color: #111827;">Rp {t['total']:,.0f}</strong>
+                                </div>
+                            </div>
+                            
+                            <div class="total-section">
+                                <span class="total-label">TOTAL PEMBAYARAN</span>
+                                <span class="total-value">Rp {t['total']:,.0f}</span>
+                            </div>
+                            
+                            <div class="footer">
+                                <div class="footer-thx">Terima kasih telah mendukung produk Vokasi!</div>
+                                <div class="footer-app">EDUWIRA SMK - Ekosistem Digital Kewirausahaan</div>
+                            </div>
+                        </div>
+                    </body>
+                    </html>
+                    """
+
+                    st.markdown("### 🧾 Pratinjau Struk Pembelian")
+                    
+                    # Render visual HTML di aplikasi
+                    import streamlit.components.v1 as components
+                    components.html(struk_html, height=360, scrolling=False)
+                    
+                    st.markdown("<div style='height: 10px;'></div>", unsafe_allow_html=True)
+
+                    # --- FORMAT TEKS POLOS KHUSUS UNTUK FILE DOWNLOAD (.TXT) ---
                     struk_plain = f"""========================================
        STRUK PEMBELIAN / NOTA TeFa      
            {nama_sekolah_kini.upper()}       
@@ -431,11 +532,6 @@ TOTAL BAYAR  : Rp {t['total']:,.0f}
  Terima kasih telah mendukung produk Vokasi!
 ========================================
 """
-
-                    st.markdown("### 🧾 Pratinjau Struk Pembelian")
-                    
-                    # Menampilkan pratinjau dengan format teks monospace agar sama persis dengan hasil download/cetak (.txt)
-                    st.code(struk_plain, language=None)
 
                     col_d1, col_d2 = st.columns(2)
                     with col_d1:
