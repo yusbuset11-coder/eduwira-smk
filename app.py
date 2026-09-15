@@ -409,33 +409,35 @@ else:
 
                 with tab2:
                     st.markdown("### ➕ Form Input Produk Baru")
+                    
+                    # Pemilihan Kategori dan Nama Produk diletakkan DI LUAR st.form 
+                    # agar bisa merespons perubahan secara langsung (sinkron).
+                    kategori = st.selectbox(
+                        "Kategori",
+                        [
+                            "Makanan & Minuman",
+                            "Kerajinan / Kriya",
+                            "Jasa & Layanan",
+                            "Teknologi / Elektronik",
+                            "Lainnya",
+                        ],
+                    )
+                    
+                    if kategori == "Makanan & Minuman":
+                        pilihan_produk = ["Keripik Singkong", "Es Teh Manis", "Roti Bakar"]
+                    elif kategori == "Kerajinan / Kriya":
+                        pilihan_produk = ["Tas Tenun", "Hiasan Dinding", "Gantungan Kunci"]
+                    elif kategori == "Jasa & Layanan":
+                        pilihan_produk = ["Servis Laptop", "Cuci Helm", "Desain Banner"]
+                    elif kategori == "Teknologi / Elektronik":
+                        pilihan_produk = ["Arduino Kit", "Kabel Jumper", "Sensor Suhu"]
+                    else:
+                        pilihan_produk = ["Produk Lainnya"]
+
+                    nama_produk = st.selectbox("Nama Produk", pilihan_produk)
+
+                    # Form input untuk data angka & deskripsi serta tombol simpan
                     with st.form("form_tambah_produk_gs", clear_on_submit=True):
-                        # 1. Pilih Kategori terlebih dahulu
-                        kategori = st.selectbox(
-                            "Kategori",
-                            [
-                                "Makanan & Minuman",
-                                "Kerajinan / Kriya",
-                                "Jasa & Layanan",
-                                "Teknologi / Elektronik",
-                                "Lainnya",
-                            ],
-                        )
-                        
-                        # 2. Pilihan Nama Produk menyesuaikan Kategori yang dipilih
-                        if kategori == "Makanan & Minuman":
-                            pilihan_produk = ["Keripik Singkong", "Es Teh Manis", "Roti Bakar"]
-                        elif kategori == "Kerajinan / Kriya":
-                            pilihan_produk = ["Tas Tenun", "Hiasan Dinding", "Gantungan Kunci"]
-                        elif kategori == "Jasa & Layanan":
-                            pilihan_produk = ["Perbaikan Peralatan Listrik", "Pemasangan AC", "Servis Sepeda Motor", "Desain Banner"]
-                        elif kategori == "Teknologi / Elektronik":
-                            pilihan_produk = ["Neon Fleksibel", "Neon L Wire", "Joule Thief", "Running Text", "Kap Lampu Daun Agel"]
-                        else:
-                            pilihan_produk = ["Produk Lainnya"]
-
-                        nama_produk = st.selectbox("Nama Produk", pilihan_produk)
-
                         harga = st.number_input("Harga (Rp)", min_value=0, step=500)
                         stok = st.number_input("Jumlah Stok", min_value=0, step=1)
                         deskripsi = st.text_area("Deskripsi Produk")
