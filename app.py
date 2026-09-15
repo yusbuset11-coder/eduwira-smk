@@ -36,12 +36,10 @@ def append_school_record(spreadsheet_id, sheet_name, row_dict):
         worksheet = sh.worksheet(sheet_name)
         headers = [h.strip() for h in worksheet.row_values(1)]
         
-        # Jika sheet masih kosong (belum ada header), buat header otomatis
         if not headers or headers == ['']:
             headers = list(row_dict.keys())
             worksheet.append_row(headers)
         
-        # Susun data berdasarkan urutan header di spreadsheet
         row_values = []
         for h in headers:
             matched_key = next((k for k in row_dict.keys() if k.lower() == h.lower()), None)
@@ -52,16 +50,17 @@ def append_school_record(spreadsheet_id, sheet_name, row_dict):
     except Exception as e:
         return False, str(e)
 
-def update_school_stock(spreadsheet_id, sheet_name, prod_id_val, new_stock):
+def update_school_stock_by_name(spreadsheet_id, sheet_name, prod_name, new_stock):
     try:
         client = get_gspread_client()
         sh = client.open_by_key(spreadsheet_id)
         worksheet = sh.worksheet(sheet_name)
-        cell = worksheet.find(str(prod_id_val))
+        cell = worksheet.find(str(prod_name))
         if cell:
             headers = [h.lower() for h in worksheet.row_values(1)]
-            if "stok" in headers:
-                stok_idx = headers.index("stok") + 1
+            stock_header = next((h for h in headers if "stok" in h), None)
+            if stock_header:
+                stok_idx = headers.index(stock_header) + 1
                 worksheet.update_cell(cell.row, stok_idx, new_stock)
                 return True
         return False
@@ -156,7 +155,7 @@ if not st.session_state.logged_in:
         with st.form("form_login_gs"):
             input_user = st.text_input(
                 "Token / Email",
-                placeholder="Contoh: EDU1234 atau yustinussetyanta08@dinas.belajar.id",
+                placeholder="Contoh: EDU123 atau yustinussetyanta08@dinas.belajar.id",
             )
             st.markdown("<div style='height: 8px;'></div>", unsafe_allow_html=True)
             btn_masuk = st.form_submit_button("🚀 Masuk Ekosistem", use_container_width=True)
@@ -301,7 +300,7 @@ else:
                     trx_count = 0
 
                     if sch_sheet_id:
-                        df_p_sch = get_school_records(sch_sheet_id, "PRODUK_SMK")
+                        df_p_sch = get_school_records(sch_sheet_id, "MASTER_PRODUK")
                         df_t_sch = get_school_records(sch_sheet_id, "TRANSAKSI")
 
                         prod_count = len(df_p_sch)
@@ -372,9 +371,9 @@ else:
         else:
             if menu == "🏠 Dashboard Utama":
                 st.markdown(f'<div style="color: #f3f4f6; font-size: 20px; font-weight: 700; margin-bottom: 10px;">Dashboard Utama - {nama_sekolah_kini}</div>', unsafe_allow_html=True)
-                st.info("Gunakan menu di samping untuk mengelola katalog produk siswa, mencatat transaksi, dan memantau omzet penjualan pada Google Spreadsheet mandiri Anda.")
+                st.info("Katalog produk dikelola langsung melalui Google Spreadsheet pada sheet **MASTER_PRODUK**. Data akan otomatis sinkron ke aplikasi.")
 
-                df_p = get_school_records(active_spreadsheet_id, "PRODUK_SMK")
+                df_p = get_school_records(active_spreadsheet_id, "MASTER_PRODUK")
                 df_t = get_school_records(active_spreadsheet_id, "TRANSAKSI")
 
                 total_prod = len(df_p)
@@ -391,70 +390,24 @@ else:
                     st.metric(label="Sumber Data", value="Google Sheets", delta="Terkoneksi")
 
             elif menu == "📦 Katalog Produk (TeFa)":
-                st.markdown("### 📦 Manajemen Katalog Produk Siswa")
-                st.write(f"Kelola daftar produk Teaching Factory untuk unit **{nama_sekolah_kini}** pada Google Spreadsheet Anda.")
+                st.markdown("### 📦 Katalog Produk Siswa (Teaching Factory)")
+                st.write(f"Daftar produk di bawah ini ditarik secara otomatis dari sheet **MASTER_PRODUK** di Google Spreadsheet unit **{nama_sekolah_kini}**.")
+                st.info("💡 *Tips: Anda cukup mengisi atau memperbarui data produk langsung di Google Spreadsheet Anda pada sheet `MASTER_PRODUK` (Kolom: Kategori | Nama_Produk | Harga | Jumlah_Stok | Deskripsi_Produk).*")
 
-                tab1, tab2 = st.tabs(["📋 Daftar Produk", "➕ Tambah Produk Baru"])
+                df_p = get_school_records(active_spreadsheet_id, "MASTER_PRODUK")
 
-                with tab1:
-                    st.markdown("#### Daftar Produk Sekolah Anda")
-                    df_p = get_school_records(active_spreadsheet_id, "PRODUK_SMK")
-
-                    if not df_p.empty:
-                        df_p = df_p.reset_index(drop=True)
-                        df_p.index = range(1, len(df_p) + 1)
-                        st.dataframe(df_p, use_container_width=True)
-                    else:
-                        st.info("ℹ️ Belum ada produk terdaftar di Google Spreadsheet sekolah Anda (atau sheet 'PRODUK_SMK' belum dibuat/kosong).")
-
-                with tab2:
-                    st.markdown("### ➕ Form Input Produk Baru")
-                    with st.form("form_tambah_produk_gs", clear_on_submit=True):
-                        nama_produk = st.text_input("Nama Produk")
-                        kategori = st.selectbox(
-                            "Kategori",
-                            [
-                                "Makanan & Minuman",
-                                "Kerajinan / Kriya",
-                                "Jasa & Layanan",
-                                "Teknologi / Elektronik",
-                                "Lainnya",
-                            ],
-                        )
-                        harga = st.number_input("Harga (Rp)", min_value=0, step=500)
-                        stok = st.number_input("Jumlah Stok", min_value=0, step=1)
-                        deskripsi = st.text_area("Deskripsi Produk")
-                        
-                        submit_prod = st.form_submit_button("📦 Simpan Produk ke Google Spreadsheet")
-                        
-                        if submit_prod:
-                            if not nama_produk or not nama_produk.strip():
-                                st.error("❌ Nama produk tidak boleh kosong!")
-                            elif harga <= 0:
-                                st.error("❌ Harga produk harus lebih besar dari 0!")
-                            else:
-                                id_prod = str(uuid.uuid4())[:8]
-                                new_row = {
-                                    "id_produk": id_prod,
-                                    "sekolah": nama_sekolah_kini,
-                                    "nama_produk": nama_produk,
-                                    "kategori": kategori,
-                                    "harga": harga,
-                                    "stok": stok,
-                                    "deskripsi_produk": deskripsi,
-                                }
-                                success, err_msg = append_school_record(active_spreadsheet_id, "PRODUK_SMK", new_row)
-                                if success:
-                                    st.success(f"🎉 Produk '{nama_produk}' berhasil disimpan ke Google Spreadsheet Anda!")
-                                    st.rerun()
-                                else:
-                                    st.error(f"❌ Gagal menyimpan ke Google Spreadsheet. Detail Error: {err_msg}")
+                if not df_p.empty:
+                    df_p = df_p.reset_index(drop=True)
+                    df_p.index = range(1, len(df_p) + 1)
+                    st.dataframe(df_p, use_container_width=True)
+                else:
+                    st.warning("⚠️ Belum ada produk di sheet `MASTER_PRODUK` pada Google Spreadsheet sekolah Anda.")
 
             elif menu == "💰 Catat Transaksi / Kasir":
                 st.markdown("### 💰 Pencatatan Transaksi & Cetak Struk")
-                st.write("Fitur kasir digital untuk mencatat penjualan dan menyimpannya langsung ke Google Spreadsheet Anda.")
+                st.write("Fitur kasir digital untuk mencatat penjualan produk dari `MASTER_PRODUK` langsung ke sheet `TRANSAKSI`.")
 
-                df_p = get_school_records(active_spreadsheet_id, "PRODUK_SMK")
+                df_p = get_school_records(active_spreadsheet_id, "MASTER_PRODUK")
 
                 if st.session_state.last_trx:
                     t = st.session_state.last_trx
@@ -499,13 +452,14 @@ TOTAL BAYAR  : Rp {t['total']:,.0f}
 
                 if not st.session_state.last_trx:
                     if not df_p.empty:
-                        name_key = next((c for c in df_p.columns if c.lower() in ["nama_produk", "namaproduk"]), df_p.columns[2] if len(df_p.columns) > 2 else df_p.columns[0])
+                        df_p.columns = df_p.columns.str.strip()
+                        name_key = next((c for c in df_p.columns if c.lower() in ["nama_produk", "namaproduk"]), df_p.columns[1])
                         list_produk = df_p[name_key].tolist()
                         pilih_produk = st.selectbox("Pilih Produk", list_produk)
 
                         selected_row = df_p[df_p[name_key] == pilih_produk].iloc[0]
                         price_key = next((c for c in df_p.columns if c.lower() == "harga"), "Harga")
-                        stock_key = next((c for c in df_p.columns if c.lower() == "stok"), "Stok")
+                        stock_key = next((c for c in df_p.columns if c.lower() in ["jumlah_stok", "jumlahstok", "stok"]), "Jumlah_Stok")
 
                         harga_satuan = float(selected_row.get(price_key, 0))
                         stok_tersedia = int(selected_row.get(stock_key, 0))
@@ -519,6 +473,7 @@ TOTAL BAYAR  : Rp {t['total']:,.0f}
                                 max_value=max(1, stok_tersedia),
                                 step=1,
                             )
+                            pembeli_input = st.text_input("Nama Pembeli / Keterangan (Opsional)", value="Umum")
                             total_harga = harga_satuan * jumlah_beli
                             st.markdown(f"**Total Harga: Rp {total_harga:,.0f}**")
 
@@ -529,20 +484,20 @@ TOTAL BAYAR  : Rp {t['total']:,.0f}
                                 waktu_sekarang = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
                                 new_trx_row = {
-                                    "id_transaksi": id_trx,
-                                    "tanggal": waktu_sekarang,
-                                    "sekolah": nama_sekolah_kini,
-                                    "nama_produk": pilih_produk,
-                                    "jumlah_terjual": int(jumlah_beli),
-                                    "total_harga": float(total_harga),
+                                    "ID_Transaksi": id_trx,
+                                    "Tanggal": waktu_sekarang,
+                                    "Sekolah": nama_sekolah_kini,
+                                    "Nama_Produk": pilih_produk,
+                                    "Jumlah_Terjual": int(jumlah_beli),
+                                    "Total_Harga": float(total_harga),
+                                    "Pembeli": pembeli_input
                                 }
                                 
-                                succ_trx = append_school_record(active_spreadsheet_id, "TRANSAKSI", new_trx_row)
+                                succ_trx, err_msg = append_school_record(active_spreadsheet_id, "TRANSAKSI", new_trx_row)
                                 
-                                prod_id_key = next((c for c in selected_row.index if c.lower() in ["id_produk", "idproduk"]), selected_row.index[0])
-                                prod_id_val = selected_row[prod_id_key]
+                                # Kurangi stok otomatis di MASTER_PRODUK jika stok tersedia
                                 new_stock = max(0, stok_tersedia - int(jumlah_beli))
-                                update_school_stock(active_spreadsheet_id, "PRODUK_SMK", prod_id_val, new_stock)
+                                update_school_stock_by_name(active_spreadsheet_id, "MASTER_PRODUK", pilih_produk, new_stock)
 
                                 if succ_trx:
                                     st.session_state.last_trx = {
@@ -556,9 +511,9 @@ TOTAL BAYAR  : Rp {t['total']:,.0f}
                                     }
                                     st.rerun()
                                 else:
-                                    st.error("❌ Gagal mencatat transaksi ke Google Spreadsheet. Pastikan sheet bernama `TRANSAKSI` tersedia.")
+                                    st.error(f"❌ Gagal mencatat transaksi: {err_msg}")
                     else:
-                        st.warning("⚠️ Belum ada data produk di Google Spreadsheet sekolah Anda. Tambahkan produk terlebih dahulu di menu **Katalog Produk (TeFa)**.")
+                        st.warning("⚠️ Belum ada data produk di sheet `MASTER_PRODUK` pada Google Spreadsheet Anda.")
 
             elif menu == "📊 Laporan & Analitik":
                 st.markdown("### 📊 Laporan & Analitik Penjualan")
@@ -584,4 +539,4 @@ TOTAL BAYAR  : Rp {t['total']:,.0f}
                     with col2:
                         st.metric("Total Unit Terjual", f"{total_item_sold} Unit")
                 else:
-                    st.info("ℹ️ Belum ada data transaksi yang tercatat di Google Spreadsheet Anda (atau sheet 'TRANSAKSI' belum dibuat).")
+                    st.info("ℹ️ Belum ada data transaksi yang tercatat di Google Spreadsheet Anda (atau sheet 'TRANSAKSI' belum tersedia).")
