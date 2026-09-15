@@ -472,7 +472,18 @@ else:
                                     st.rerun()
                                 else:
                                     st.error(f"❌ Gagal menyimpan ke Google Spreadsheet. Detail Error: {err_msg}")
-struk_text = f"""
+
+                if menu == "💰 Catat Transaksi / Kasir":
+                    st.markdown("### 💰 Pencatatan Transaksi & Cetak Struk")
+                    st.write("Fitur kasir digital untuk mencatat penjualan dan menyimpannya langsung ke Google Spreadsheet Anda.")
+
+                    df_p = get_school_records(active_spreadsheet_id, "PRODUK_SMK")
+
+                    if st.session_state.last_trx:
+                        t = st.session_state.last_trx
+                        st.success("🎉 Transaksi berhasil dicatat dan disinkronkan ke Google Spreadsheet!")
+
+                        struk_text = f"""
 ========================================
        STRUK PEMBELIAN / NOTA TeFa      
            {nama_sekolah_kini.upper()}       
@@ -490,18 +501,17 @@ TOTAL BAYAR  : Rp {t['total']:,.0f}
  Terima kasih telah mendukung produk Vokasi!
 ========================================
 """
-                    st.markdown("### 🧾 Pratinjau Struk Pembelian")
-                    st.code(struk_text, language="text")
+                        st.markdown("### 📄 Pratinjau Struk Pembelian")
+                        st.code(struk_text, language="text")
 
-                    col_d1, col_d2 = st.columns(2)
-                    with col_d1:
-                        st.download_button(
-                            label="📥 Download Struk (TXT)",
-                            data=struk_text,
-                            file_name=f"Struk_{t['id_trx']}.txt",
-                            mime="text/plain",
-                            use_container_width=True,
-                        )
+                        col_d1, col_d2 = st.columns(2)
+                        with col_d1:
+                            st.download_button(
+                                label="📥 Download Struk (TXT)",
+                                data=struk_text,
+                                file_name=f"Struk_{t['id_trx']}.txt",
+                                mime="text/plain",
+                            )
                     with col_d2:
                         if st.button("🔄 Catat Transaksi Baru", use_container_width=True):
                             st.session_state.last_trx = None
