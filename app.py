@@ -591,7 +591,7 @@ TOTAL BAYAR  : Rp {t['total']:,.0f}
                         df_p.columns = df_p.columns.str.strip()
                         name_key = next((c for c in df_p.columns if c.lower() in ["nama_produk", "namaproduk"]), df_p.columns[1])
                         list_produk = df_p[name_key].tolist()
-                        pilih_produk = st.selectbox("Pilih Produk", list_produk)
+                        pilih_produk = st.selectbox("Pilih Produk atau Jasa Layanan", list_produk)
 
                         selected_row = df_p[df_p[name_key] == pilih_produk].iloc[0]
                         price_key = next((c for c in df_p.columns if c.lower() == "harga"), "Harga")
