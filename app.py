@@ -545,13 +545,11 @@ else:
 
                     st.markdown("### 🧾 Pratinjau Struk Pembelian")
                     
-                    # Render visual HTML di aplikasi
                     import streamlit.components.v1 as components
                     components.html(struk_html, height=360, scrolling=False)
                     
                     st.markdown("<div style='height: 10px;'></div>", unsafe_allow_html=True)
 
-                    # --- FORMAT TEKS POLOS KHUSUS UNTUK FILE DOWNLOAD (.TXT) ---
                     struk_plain = f"""========================================
        STRUK PEMBELIAN / NOTA TeFa      
            {nama_sekolah_kini.upper()}       
@@ -596,6 +594,10 @@ TOTAL BAYAR  : Rp {t['total']:,.0f}
                         selected_row = df_p[df_p[name_key] == pilih_produk].iloc[0]
                         price_key = next((c for c in df_p.columns if c.lower() == "harga"), "Harga")
                         stock_key = next((c for c in df_p.columns if c.lower() in ["jumlah_stok", "jumlahstok", "stok"]), "Jumlah_Stok")
+                        
+                        # Deteksi aman apakah produk berupa kategori jasa/layanan
+                        kategori_val = str(selected_row.get("Kategori", "")).lower()
+                        is_jasa = "jasa" in kategori_val or "layanan" in kategori_val
 
                         harga_satuan = float(selected_row.get(price_key, 0))
                         stok_tersedia = int(selected_row.get(stock_key, 0))
@@ -603,13 +605,12 @@ TOTAL BAYAR  : Rp {t['total']:,.0f}
                         st.info(f"💵 Harga Satuan: Rp {harga_satuan:,.0f} | 📦 Stok Tersedia: {stok_tersedia}")
 
                         with st.form("form_transaksi_gs"):
-                            # Input tanggal saja, jam otomatis mengikuti waktu saat ini
                             tanggal_trx = st.date_input("Tanggal Transaksi", value=datetime.now().date())
 
                             jumlah_beli = st.number_input(
                                 "Jumlah / Frekuensi",
                                 min_value=1,
-                                max_value=max(1, stok_tersedia),
+                                max_value=max(1, stok_tersedia) if not is_jasa else 9999,
                                 step=1,
                             )
                             pembeli_input = st.text_input("Nama Pembeli / Keterangan (Opsional)", value="Umum")
@@ -621,7 +622,6 @@ TOTAL BAYAR  : Rp {t['total']:,.0f}
                             if submit_trx:
                                 id_trx = str(uuid.uuid4())[:8].upper()
                                 
-                                # Gabungkan tanggal pilihan user dengan jam saat ini secara otomatis
                                 gabung_waktu = datetime.combine(tanggal_trx, datetime.now().time())
                                 waktu_sekarang = gabung_waktu.strftime("%Y-%m-%d %H:%M:%S")
 
@@ -637,18 +637,12 @@ TOTAL BAYAR  : Rp {t['total']:,.0f}
                                          
                                 succ_trx, err_msg = append_school_record(active_spreadsheet_id, "TRANSAKSI", new_trx_row)
                                 
-                                # Kurangi stok otomatis HANYA jika bukan produk jasa/layanan
-                                if not is_jasa:
-                                    new_stock = max(0, stok_tersedia - int(jumlah_beli))
-                                    update_school_stock_by_name(active_spreadsheet_id, "MASTER_PRODUK", pilih_produk, new_stock)
-                                
-                                succ_trx, err_msg = append_school_record(active_spreadsheet_id, "TRANSAKSI", new_trx_row)
-                                
-                                # Kurangi stok otomatis di MASTER_PRODUK jika stok tersedia
-                                new_stock = max(0, stok_tersedia - int(jumlah_beli))
-                                update_school_stock_by_name(active_spreadsheet_id, "MASTER_PRODUK", pilih_produk, new_stock)
-
                                 if succ_trx:
+                                    # Kurangi stok otomatis HANYA jika bukan produk jasa/layanan
+                                    if not is_jasa:
+                                        new_stock = max(0, stok_tersedia - int(jumlah_beli))
+                                        update_school_stock_by_name(active_spreadsheet_id, "MASTER_PRODUK", pilih_produk, new_stock)
+                                    
                                     st.session_state.last_trx = {
                                         "id_trx": id_trx,
                                         "waktu": waktu_sekarang,
