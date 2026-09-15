@@ -18,7 +18,6 @@ st.set_page_config(
 def init_gspread():
     try:
         scope = ["https://www.googleapis.com/auth/spreadsheets", "https://www.googleapis.com/auth/drive"]
-        # Mengambil secret dari Streamlit Cloud secrets.toml
         creds_dict = dict(st.secrets["gcp_service_account"])
         creds = Credentials.from_service_account_info(creds_dict, scopes=scope)
         client = gspread.authorize(creds)
@@ -29,7 +28,6 @@ def init_gspread():
 client = init_gspread()
 
 # --- DATABASE / DAFTAR SEKOLAH ---
-# Dictionary mapping Nama Sekolah ke Spreadsheet ID masing-masing
 SEKOLAH_SPREADSHEET = {
     "SMK Negeri 1 Kwanyar": "17BPw0rugvLPp4P8SeWtfXPObrH2Fkb_IGVFXomyf4",
     "SMK Negeri 2 Bangkalan": "1ETKhDfk2b23y8FscypR43-mrrtT2vlQ38w8BqFUWY",
@@ -56,7 +54,6 @@ def append_school_record(spreadsheet_id, sheet_name, row_dict):
     try:
         sh = client.open_by_key(spreadsheet_id)
         worksheet = sh.worksheet(sheet_name)
-        # Urutan kolom disesuaikan dengan keys dictionary
         row_values = list(row_dict.values())
         worksheet.append_row(row_values)
         return True, ""
@@ -75,7 +72,7 @@ if "unit_sekolah" not in st.session_state:
 if "last_trx" not in st.session_state:
     st.session_state.last_trx = None
 
-# --- HALAMAN LOGIN ---
+# --- HALAMAN LOGIN (Versi Simpel: Masukkan Nama/Token Unik Langsung Masuk) ---
 if not st.session_state.logged_in:
     st.markdown("<h1 style='text-align: center;'>⚡ EDUWIRA SMK</h1>", unsafe_allow_html=True)
     st.markdown("<h4 style='text-align: center; color: gray;'>Ekosistem Digital Untuk Kewirausahaan Sekolah Menengah Kejuruan</h4>", unsafe_allow_html=True)
@@ -85,11 +82,9 @@ if not st.session_state.logged_in:
     with col_l2:
         with st.form("login_form"):
             st.markdown("### 🔐 Login Akses Sistem")
-            username_input = st.text_input("Username / Nama Pengguna")
-            password_input = st.text_input("Password", type="password")
+            token_input = st.text_input("Masukkan Nama / Token Unik Anda")
             role_pilih = st.selectbox("Pilih Hak Akses (Role)", ["Sekolah", "Admin Cabdin / Pusat"])
             
-            # Jika role adalah Sekolah, munculkan pilihan unit sekolah
             unit_pilih = None
             if role_pilih == "Sekolah":
                 unit_pilih = st.selectbox("Pilih Unit Sekolah", list(SEKOLAH_SPREADSHEET.keys()))
@@ -97,21 +92,21 @@ if not st.session_state.logged_in:
             submit_login = st.form_submit_button("Masuk Aplikasi", use_container_width=True)
             
             if submit_login:
-                if username_input.strip() != "":
+                if token_input.strip() != "":
                     st.session_state.logged_in = True
-                    st.session_state.username = username_input
+                    st.session_state.username = token_input
                     st.session_state.role = role_pilih
                     if unit_pilih:
                         st.session_state.unit_sekolah = unit_pilih
                     st.success("Login berhasil!")
                     st.rerun()
                 else:
-                    st.error("⚠️ Username tidak boleh kosong!")
+                    st.error("⚠️ Token atau Nama tidak boleh kosong!")
     st.stop()
 
 # --- SIDEBAR NAVIGASI & INFO ---
 with st.sidebar:
-    st.markdown(f"👤 **Admin:** {st.session_state.username}")
+    st.markdown(f"👤 **User / Token:** {st.session_state.username}")
     if st.session_state.role == "Sekolah":
         st.markdown(f"🏢 **Unit:** {st.session_state.unit_sekolah}")
     st.markdown(f"🛡️ **Role:** {st.session_state.role}")
@@ -151,7 +146,6 @@ if menu == "Dashboard Utama":
     st.markdown(f"### Dashboard Utama - {nama_sekolah_kini}")
     st.info("Gunakan menu di samping untuk mengelola katalog produk siswa, mencatat transaksi, dan memantau omzet penjualan pada Google Spreadsheet mandiri Anda.")
     
-    # Ambil data dari MASTER_PRODUK & TRANSAKSI
     df_master_dash = get_school_records(active_spreadsheet_id, "MASTER_PRODUK")
     df_trx_dash = get_school_records(active_spreadsheet_id, "TRANSAKSI")
     
@@ -236,7 +230,6 @@ elif menu == "Catat Transaksi / Kasir":
     if df_p.empty:
         st.warning("⚠️ Belum ada produk di `MASTER_PRODUK`. Tambahkan produk terlebih dahulu di menu Katalog Produk.")
     else:
-        # Normalisasi nama kolom agar aman
         df_p.columns = df_p.columns.str.strip()
         col_nama = next((c for c in df_p.columns if "nama" in c.lower()), df_p.columns[1])
         col_harga = next((c for c in df_p.columns if "harga" in c.lower()), "Harga")
@@ -246,7 +239,6 @@ elif menu == "Catat Transaksi / Kasir":
         
         selected_prod_name = st.selectbox("Pilih Produk", list_produk)
         
-        # Ambil detail produk terpilih
         prod_row = df_p[df_p[col_nama] == selected_prod_name].iloc[0]
         harga_satuan = float(prod_row.get(col_harga, 0))
         stok_tersedia = int(prod_row.get(col_stok, 0))
@@ -274,7 +266,6 @@ elif menu == "Catat Transaksi / Kasir":
                     "Pembeli": pembeli
                 }
                 
-                # Simpan ke Google Sheets TRANSAKSI
                 success, err = append_school_record(active_spreadsheet_id, "TRANSAKSI", trx_row)
                 
                 if success:
@@ -293,7 +284,6 @@ elif menu == "Catat Transaksi / Kasir":
                 else:
                     st.error(f"❌ Gagal mencatat transaksi ke Spreadsheet: {err}")
 
-    # Tampilkan Struk jika ada transaksi terakhir di session state
     if st.session_state.last_trx:
         t = st.session_state.last_trx
         st.markdown("---")
@@ -340,7 +330,6 @@ elif menu == "Laporan & Analitik":
     if not df_trx_report.empty:
         st.dataframe(df_trx_report, use_container_width=True)
         
-        # Hitung ringkasan
         col_r1, col_r2 = st.columns(2)
         with col_r1:
             total_trx_item = len(df_trx_report)
@@ -350,7 +339,6 @@ elif menu == "Laporan & Analitik":
             sum_omzet = pd.to_numeric(df_trx_report[col_tot_name], errors='coerce').sum()
             st.metric("Akumulasi Omzet", f"Rp {sum_omzet:,.0f}")
             
-        # Tombol Download CSV Laporan
         csv_data = df_trx_report.to_csv(index=False).encode('utf-8')
         st.download_button(
             label="📥 Download Laporan Transaksi (CSV)",
