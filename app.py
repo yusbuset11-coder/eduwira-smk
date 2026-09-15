@@ -290,10 +290,14 @@ else:
                 admin_col_name = cols_lower.get("admin_pj", cols_lower.get("admin_nama", df_reg.columns[2]))
                 sheet_id_col = cols_lower.get("spreadsheet_id", None)
 
+                dict_sekolah_sheet = {}
+
                 for _, row in df_sekolah.iterrows():
                     sch_name = str(row.get(sekolah_col_name, "Sekolah"))
                     admin_pj = str(row.get(admin_col_name, "-"))
                     sch_sheet_id = str(row.get(sheet_id_col, "")) if sheet_id_col else ""
+                    
+                    dict_sekolah_sheet[sch_name] = sch_sheet_id
 
                     prod_count = 0
                     omzet_sekolah = 0
@@ -333,7 +337,41 @@ else:
                     st.metric("Total Transaksi Keseluruhan", f"{total_trx_all} Transaksi")
 
                 st.markdown("---")
-                st.markdown("#### 📋 Tabel Performa Kewirausahaan per SMK Binaan")
+
+                # --- FILTER PILIH SEKOLAH ---
+                st.markdown("#### 🔍 Filter Performa Detail SMK Binaan")
+                daftar_nama_sekolah = list(dict_sekolah_sheet.keys())
+                pilih_filter_sekolah = st.selectbox("Pilih Sekolah untuk Melihat Detail Transaksi", daftar_nama_sekolah)
+
+                if pilih_filter_sekolah:
+                    target_sheet_id = dict_sekolah_sheet.get(pilih_filter_sekolah, "")
+                    st.markdown(f"#### 📋 Tabel Performa Kewirausahaan {pilih_filter_sekolah}")
+                    
+                    if target_sheet_id:
+                        df_t_target = get_school_records(target_sheet_id, "TRANSAKSI")
+                        if not df_t_target.empty:
+                            df_t_target = df_t_target.reset_index(drop=True)
+                            df_t_target.index = range(1, len(df_t_target) + 1)
+                            st.dataframe(df_t_target, use_container_width=True)
+
+                            omzet_col_t = next((c for c in df_t_target.columns if c.lower() in ["total_harga", "totalharga"]), None)
+                            qty_col_t = next((c for c in df_t_target.columns if c.lower() in ["jumlah_terjual", "jumlahterjual"]), None)
+
+                            omzet_target = pd.to_numeric(df_t_target[omzet_col_t], errors='coerce').sum() if omzet_col_t else 0
+                            unit_target = pd.to_numeric(df_t_target[qty_col_t], errors='coerce').sum() if qty_col_t else len(df_t_target)
+
+                            col_d1, col_d2 = st.columns(2)
+                            with col_d1:
+                                st.metric("Total Omzet", f"Rp {omzet_target:,.0f}")
+                            with col_d2:
+                                st.metric("Total Unit Terjual", f"{unit_target} Unit")
+                        else:
+                            st.info(f"ℹ️ Belum ada data transaksi yang tercatat untuk unit {pilih_filter_sekolah}.")
+                    else:
+                        st.warning("⚠️ Spreadsheet ID untuk sekolah ini belum dikonfigurasi.")
+
+                st.markdown("---")
+                st.markdown("#### 📈 Rekapitulasi Keseluruhan SMK Binaan")
                 if not df_summary.empty:
                     df_summary = df_summary.reset_index(drop=True)
                     df_summary.index = range(1, len(df_summary) + 1)
@@ -342,7 +380,6 @@ else:
                     st.info("Belum ada data rekapitulasi sekolah.")
             else:
                 st.warning("Tabel `DATABASE_MASTER_REGISTRY` kosong.")
-
         elif menu == "🏫 Daftar SMK Binaan":
             st.markdown("### 🏫 Daftar Master Registry SMK Binaan (Google Sheets)")
             st.write("Daftar akun sekolah binaan beserta Spreadsheet ID masing-masing.")
