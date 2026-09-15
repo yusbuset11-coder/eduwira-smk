@@ -458,7 +458,7 @@ else:
                     """
 
                     st.markdown("### 🧾 Pratinjau Struk Pembelian")
-                    # PASTIKAN PARAMETER unsafe_allow_html=True DITULISKAN DI SINI:
+                    # PERBAIKAN UTAMA: Menambahkan parameter unsafe_allow_html=True di bawah ini
                     st.markdown(struk_html, unsafe_allow_html=True)
                     st.markdown("<div style='height: 16px;'></div>", unsafe_allow_html=True)
 
