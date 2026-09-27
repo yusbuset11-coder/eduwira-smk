@@ -262,7 +262,7 @@ else:
     # ==========================================
     if is_pengawas:
         if menu == "📊 Dashboard Rekap PS":
-            st.markdown("### 📊 Dashboard Rekapitulasi Kewirausahaan SMK Se-Binaan")
+            st.markdown("### 📊 Dashboard Rekapitulasi Kewirausahaan Semua SMK Binaan")
             st.write("Memantau rekapitulasi produk dan transaksi langsung dari Google Spreadsheet masing-masing sekolah.")
 
             try:
