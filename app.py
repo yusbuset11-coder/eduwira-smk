@@ -427,7 +427,7 @@ else:
                     st.metric(label="Sumber Data", value="Google Sheets", delta="Terkoneksi")
 
             elif menu == "📦 Katalog Produk (TeFa)":
-                st.markdown("### 📦 Katalog Produk Siswa (Teaching Factory)")
+                st.markdown("### 📦 Katalog Produk dan Jasa")
                 st.write(f"Daftar produk di bawah ini ditarik secara otomatis dari sheet **MASTER_PRODUK** di Google Spreadsheet unit **{nama_sekolah_kini}**.")
                 st.info("💡 *Tips: Anda cukup mengisi atau memperbarui data produk langsung di Google Spreadsheet Anda pada sheet `MASTER_PRODUK` (Kolom: Kategori | Nama_Produk | Harga | Jumlah_Stok | Deskripsi_Produk).*")
 
