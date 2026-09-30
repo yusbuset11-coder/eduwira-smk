@@ -764,6 +764,33 @@ TOTAL BAYAR  : Rp {t['total']:,.0f}
         if not st.session_state.last_trx:
           if not df_p.empty:
             df_p.columns = df_p.columns.str.strip()
+
+            # --- TAMBAHAN FILTER KATEGORI ---
+            cat_key = next(
+                (
+                    c
+                    for c in df_p.columns
+                    if c.lower() in ["kategori", "category"]
+                ),
+                df_p.columns[0],
+            )
+            list_kategori = (
+                df_p[cat_key].dropna().astype(str).unique().tolist()
+            )
+            if not list_kategori:
+              list_kategori = ["Semua Kategori"]
+
+            pilih_kategori = st.selectbox(
+                "Pilih Kategori Produk/Jasa", list_kategori
+            )
+
+            # Filter dataframe berdasarkan kategori yang dipilih
+            df_filtered = (
+                df_p[df_p[cat_key].astype(str) == pilih_kategori]
+                if pilih_kategori in list_kategori
+                else df_p
+            )
+
             name_key = next(
                 (
                     c
@@ -772,144 +799,152 @@ TOTAL BAYAR  : Rp {t['total']:,.0f}
                 ),
                 df_p.columns[1],
             )
-            list_produk = df_p[name_key].tolist()
-            pilih_produk = st.selectbox(
-                "Pilih Produk atau Jasa Layanan", list_produk
-            )
+            list_produk = df_filtered[name_key].tolist()
 
-            selected_row = df_p[df_p[name_key] == pilih_produk].iloc[0]
-            price_key = next(
-                (c for c in df_p.columns if c.lower() == "harga"), "Harga"
-            )
-            stock_key = next(
-                (
-                    c
-                    for c in df_p.columns
-                    if c.lower() in ["jumlah_stok", "jumlahstok", "stok"]
-                ),
-                "Jumlah_Stok",
-            )
-
-            # Deteksi aman apakah produk berupa kategori jasa/layanan
-            kategori_val = str(selected_row.get("Kategori", "")).lower()
-            is_jasa = (
-                "jasa" in kategori_val
-                or "layanan" in kategori_val
-                or "pemasangan" in kategori_val
-            )
-
-            # --- AMAN: Konversi Harga Satuan dari Sheet ---
-            val_harga = selected_row.get(price_key, 0)
-            try:
-              harga_default = (
-                  float(val_harga)
-                  if pd.notna(val_harga) and str(val_harga).strip() != ""
-                  else 0.0
-              )
-            except (ValueError, TypeError):
-              harga_default = 0.0
-
-            # --- AMAN: Konversi Stok Tersedia dari Sheet ---
-            val_stok = selected_row.get(stock_key, 0)
-            try:
-              stok_tersedia = (
-                  int(float(val_stok))
-                  if pd.notna(val_stok) and str(val_stok).strip() != ""
-                  else 0
-              )
-            except (ValueError, TypeError):
-              stok_tersedia = 0
-
-            # Peringatan jika harga belum diset (misal 0 untuk item kustom/jasa)
-            if harga_default == 0:
+            if not list_produk:
               st.warning(
-                  "⚠ Produk/Jasa ini belum memiliki patokan harga tetap di"
-                  " Master Produk. Silakan masukkan harga secara manual pada"
-                  " form di bawah."
+                  f"⚠️ Tidak ada produk ditemukan pada kategori '{pilih_kategori}'."
               )
-              st.info(f"Stok Tersedia: {stok_tersedia}")
             else:
-              st.info(
-                  f"Harga Standar: Rp {harga_default:,.0f} | Stok Tersedia:"
-                  f" {stok_tersedia}"
+              pilih_produk = st.selectbox(
+                  "Pilih Produk atau Jasa Layanan", list_produk
               )
 
-            with st.form("form_transaksi_gs"):
-              tanggal_trx = st.date_input(
-                  "Tanggal Transaksi", value=datetime.now().date()
+              selected_row = df_filtered[
+                  df_filtered[name_key] == pilih_produk
+              ].iloc[0]
+              price_key = next(
+                  (c for c in df_p.columns if c.lower() == "harga"), "Harga"
+              )
+              stock_key = next(
+                  (
+                      c
+                      for c in df_p.columns
+                      if c.lower() in ["jumlah_stok", "jumlahstok", "stok"]
+                  ),
+                  "Jumlah_Stok",
               )
 
-              # --- INPUT MANUAL HARGA (Bisa disesuaikan / diisi jika 0) ---
-              harga_satuan = st.number_input(
-                  "Harga Satuan (Rp) *Dapat disesuaikan atau diisi manual*",
-                  min_value=0.0,
-                  value=float(harga_default),
-                  step=1000.0,
-                  format="%0.f",
+              # Deteksi aman apakah produk berupa kategori jasa/layanan
+              kategori_val = str(selected_row.get(cat_key, "")).lower()
+              is_jasa = (
+                  "jasa" in kategori_val
+                  or "layanan" in kategori_val
+                  or "pemasangan" in kategori_val
               )
 
-              jumlah_beli = st.number_input(
-                  "Jumlah / Frekuensi",
-                  min_value=1,
-                  max_value=max(1, stok_tersedia) if not is_jasa else 9999,
-                  step=1,
-              )
-              pembeli_input = st.text_input(
-                  "Nama Pembeli / Keterangan (Opsional)", value="Umum"
-              )
-
-              total_harga = harga_satuan * jumlah_beli
-              st.markdown(f"**Total Harga: Rp {total_harga:,.0f}**")
-
-              submit_trx = st.form_submit_button(
-                  "🛒 Proses Transaksi & Simpan"
-              )
-
-              if submit_trx:
-                id_trx = str(uuid.uuid4())[:8].upper()
-
-                gabung_waktu = datetime.combine(
-                    tanggal_trx, datetime.now().time()
+              # --- AMAN: Konversi Harga Satuan dari Sheet ---
+              val_harga = selected_row.get(price_key, 0)
+              try:
+                harga_default = (
+                    float(val_harga)
+                    if pd.notna(val_harga) and str(val_harga).strip() != ""
+                    else 0.0
                 )
-                waktu_sekarang = gabung_waktu.strftime("%Y-%m-%d %H:%M:%S")
+              except (ValueError, TypeError):
+                harga_default = 0.0
 
-                new_trx_row = {
-                    "ID_Transaksi": id_trx,
-                    "Tanggal": waktu_sekarang,
-                    "Sekolah": nama_sekolah_kini,
-                    "Nama_Produk": pilih_produk,
-                    "Jumlah_Terjual": int(jumlah_beli),
-                    "Total_Harga": float(total_harga),
-                    "Pembeli": pembeli_input,
-                }
+              # --- AMAN: Konversi Stok Tersedia dari Sheet ---
+              val_stok = selected_row.get(stock_key, 0)
+              try:
+                stok_tersedia = (
+                    int(float(val_stok))
+                    if pd.notna(val_stok) and str(val_stok).strip() != ""
+                    else 0
+                )
+              except (ValueError, TypeError):
+                stok_tersedia = 0
 
-                succ_trx, err_msg = append_school_record(
-                    active_spreadsheet_id, "TRANSAKSI", new_trx_row
+              # Peringatan jika harga belum diset (misal 0 untuk item kustom/jasa)
+              if harga_default == 0:
+                st.warning(
+                    "⚠ Produk/Jasa ini belum memiliki patokan harga tetap di"
+                    " Master Produk. Silakan masukkan harga secara manual pada"
+                    " form di bawah."
+                )
+                st.info(f"Stok Tersedia: {stok_tersedia}")
+              else:
+                st.info(
+                    f"Harga Standar: Rp {harga_default:,.0f} | Stok Tersedia:"
+                    f" {stok_tersedia}"
                 )
 
-                if succ_trx:
-                  # Kurangi stok otomatis HANYA jika bukan produk jasa/layanan
-                  if not is_jasa:
-                    new_stock = max(0, stok_tersedia - int(jumlah_beli))
-                    update_school_stock_by_name(
-                        active_spreadsheet_id,
-                        "MASTER_PRODUK",
-                        pilih_produk,
-                        new_stock,
-                    )
+              with st.form("form_transaksi_gs"):
+                tanggal_trx = st.date_input(
+                    "Tanggal Transaksi", value=datetime.now().date()
+                )
 
-                  st.session_state.last_trx = {
-                      "id_trx": id_trx,
-                      "waktu": waktu_sekarang,
-                      "produk": pilih_produk,
-                      "harga_satuan": harga_satuan,
-                      "jumlah": jumlah_beli,
-                      "total": total_harga,
-                      "kasir": st.session_state.admin_nama,
+                # --- INPUT MANUAL HARGA (Bisa disesuaikan / diisi jika 0) ---
+                harga_satuan = st.number_input(
+                    "Harga Satuan (Rp) *Dapat disesuaikan atau diisi manual*",
+                    min_value=0.0,
+                    value=float(harga_default),
+                    step=1000.0,
+                    format="%0.f",
+                )
+
+                jumlah_beli = st.number_input(
+                    "Jumlah / Frekuensi",
+                    min_value=1,
+                    max_value=max(1, stok_tersedia) if not is_jasa else 9999,
+                    step=1,
+                )
+                pembeli_input = st.text_input(
+                    "Nama Pembeli / Keterangan (Opsional)", value="Umum"
+                )
+
+                total_harga = harga_satuan * jumlah_beli
+                st.markdown(f"**Total Harga: Rp {total_harga:,.0f}**")
+
+                submit_trx = st.form_submit_button(
+                    "🛒 Proses Transaksi & Simpan"
+                )
+
+                if submit_trx:
+                  id_trx = str(uuid.uuid4())[:8].upper()
+
+                  gabung_waktu = datetime.combine(
+                      tanggal_trx, datetime.now().time()
+                  )
+                  waktu_sekarang = gabung_waktu.strftime("%Y-%m-%d %H:%M:%S")
+
+                  new_trx_row = {
+                      "ID_Transaksi": id_trx,
+                      "Tanggal": waktu_sekarang,
+                      "Sekolah": nama_sekolah_kini,
+                      "Nama_Produk": pilih_produk,
+                      "Jumlah_Terjual": int(jumlah_beli),
+                      "Total_Harga": float(total_harga),
+                      "Pembeli": pembeli_input,
                   }
-                  st.rerun()
-                else:
-                  st.error(f"❌ Gagal mencatat transaksi: {err_msg}")
+
+                  succ_trx, err_msg = append_school_record(
+                      active_spreadsheet_id, "TRANSAKSI", new_trx_row
+                  )
+
+                  if succ_trx:
+                    # Kurangi stok otomatis HANYA jika bukan produk jasa/layanan
+                    if not is_jasa:
+                      new_stock = max(0, stok_tersedia - int(jumlah_beli))
+                      update_school_stock_by_name(
+                          active_spreadsheet_id,
+                          "MASTER_PRODUK",
+                          pilih_produk,
+                          new_stock,
+                      )
+
+                    st.session_state.last_trx = {
+                        "id_trx": id_trx,
+                        "waktu": waktu_sekarang,
+                        "produk": pilih_produk,
+                        "harga_satuan": harga_satuan,
+                        "jumlah": jumlah_beli,
+                        "total": total_harga,
+                        "kasir": st.session_state.admin_nama,
+                    }
+                    st.rerun()
+                  else:
+                    st.error(f"❌ Gagal mencatat transaksi: {err_msg}")
           else:
             st.warning(
                 "⚠️ Belum ada data produk di sheet `MASTER_PRODUK` pada Google"
