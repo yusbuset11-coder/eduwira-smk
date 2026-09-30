@@ -8,64 +8,71 @@ import streamlit as st
 # --- KONFIGURASI MASTER SPREADSHEET REGISTRY ---
 MASTER_SPREADSHEET_ID = "14nb2iWD92_TYf9yFQr97BNL4VQjBxJMtbSOm-6IBrMc"
 
+
 # --- KONFIGURASI GOOGLE SHEETS (GSPREAD) ---
 def get_gspread_client():
-    scope = [
-        "https://www.googleapis.com/auth/spreadsheets",
-        "https://www.googleapis.com/auth/drive"
-    ]
-    creds_dict = dict(st.secrets["gcp_service_account"])
-    creds = Credentials.from_service_account_info(creds_dict, scopes=scope)
-    client = gspread.authorize(creds)
-    return client
+  scope = [
+      "https://www.googleapis.com/auth/spreadsheets",
+      "https://www.googleapis.com/auth/drive",
+  ]
+  creds_dict = dict(st.secrets["gcp_service_account"])
+  creds = Credentials.from_service_account_info(creds_dict, scopes=scope)
+  client = gspread.authorize(creds)
+  return client
+
 
 def get_school_records(spreadsheet_id, sheet_name):
-    try:
-        client = get_gspread_client()
-        sh = client.open_by_key(spreadsheet_id)
-        worksheet = sh.worksheet(sheet_name)
-        data = worksheet.get_all_records()
-        return pd.DataFrame(data)
-    except Exception:
-        return pd.DataFrame()
+  try:
+    client = get_gspread_client()
+    sh = client.open_by_key(spreadsheet_id)
+    worksheet = sh.worksheet(sheet_name)
+    data = worksheet.get_all_records()
+    return pd.DataFrame(data)
+  except Exception:
+    return pd.DataFrame()
+
 
 def append_school_record(spreadsheet_id, sheet_name, row_dict):
-    try:
-        client = get_gspread_client()
-        sh = client.open_by_key(spreadsheet_id)
-        worksheet = sh.worksheet(sheet_name)
-        headers = [h.strip() for h in worksheet.row_values(1)]
-        
-        if not headers or headers == ['']:
-            headers = list(row_dict.keys())
-            worksheet.append_row(headers)
-        
-        row_values = []
-        for h in headers:
-            matched_key = next((k for k in row_dict.keys() if k.lower() == h.lower()), None)
-            row_values.append(row_dict.get(matched_key, "") if matched_key else "")
-            
-        worksheet.append_row(row_values)
-        return True, "Sukses"
-    except Exception as e:
-        return False, str(e)
+  try:
+    client = get_gspread_client()
+    sh = client.open_by_key(spreadsheet_id)
+    worksheet = sh.worksheet(sheet_name)
+    headers = [h.strip() for h in worksheet.row_values(1)]
+
+    if not headers or headers == [""]:
+      headers = list(row_dict.keys())
+      worksheet.append_row(headers)
+
+    row_values = []
+    for h in headers:
+      matched_key = next(
+          (k for k in row_dict.keys() if k.lower() == h.lower()), None
+      )
+      row_values.append(row_dict.get(matched_key, "") if matched_key else "")
+
+    worksheet.append_row(row_values)
+    return True, "Sukses"
+  except Exception as e:
+    return False, str(e)
+
 
 def update_school_stock_by_name(spreadsheet_id, sheet_name, prod_name, new_stock):
-    try:
-        client = get_gspread_client()
-        sh = client.open_by_key(spreadsheet_id)
-        worksheet = sh.worksheet(sheet_name)
-        cell = worksheet.find(str(prod_name))
-        if cell:
-            headers = [h.lower() for h in worksheet.row_values(1)]
-            stock_header = next((h for h in headers if "stok" in h), None)
-            if stock_header:
-                stok_idx = headers.index(stock_header) + 1
-                worksheet.update_cell(cell.row, stok_idx, new_stock)
-                return True
-        return False
-    except Exception:
-        return False
+  try:
+    client = get_gspread_client()
+    sh = client.open_by_key(spreadsheet_id)
+    worksheet = sh.worksheet(sheet_name)
+    cell = worksheet.find(str(prod_name))
+    if cell:
+      headers = [h.lower() for h in worksheet.row_values(1)]
+      stock_header = next((h for h in headers if "stok" in h), None)
+      if stock_header:
+        stok_idx = headers.index(stock_header) + 1
+        worksheet.update_cell(cell.row, stok_idx, new_stock)
+        return True
+    return False
+  except Exception:
+    return False
+
 
 # --- KONFIGURASI HALAMAN UTAMA ---
 st.set_page_config(
@@ -78,17 +85,17 @@ LOGO_URL = "https://lh3.googleusercontent.com/d/1a-b-_KKjgSyN7RnvvKn85_P-hektUar
 
 # --- INISIALISASI SESSION STATE GLOBAL ---
 if "logged_in" not in st.session_state:
-    st.session_state.logged_in = False
+  st.session_state.logged_in = False
 if "admin_nama" not in st.session_state:
-    st.session_state.admin_nama = ""
+  st.session_state.admin_nama = ""
 if "nama_sekolah" not in st.session_state:
-    st.session_state.nama_sekolah = ""
+  st.session_state.nama_sekolah = ""
 if "role" not in st.session_state:
-    st.session_state.role = ""
+  st.session_state.role = ""
 if "spreadsheet_id" not in st.session_state:
-    st.session_state.spreadsheet_id = ""
+  st.session_state.spreadsheet_id = ""
 if "last_trx" not in st.session_state:
-    st.session_state.last_trx = None
+  st.session_state.last_trx = None
 
 # --- STYLING CSS KUSTOM ---
 st.markdown(
@@ -145,313 +152,484 @@ st.markdown(
 
 # --- KONDISI 1: BELUM LOGIN ---
 if not st.session_state.logged_in:
-    st.markdown(
-        '<div style="background: #111827; padding: 28px 32px; border-radius: 16px; border: 1px solid #1f2937; width: 100%; margin: 0 auto 20px auto; box-shadow: 0 10px 30px rgba(0,0,0,0.5); text-align: center;"><div style="color: #818cf8; font-size: 20px; font-weight: 700; margin-bottom: 8px;">🔐 Login Portal EDUWIRA</div><div style="color: #e2e8f0; font-size: 16px; font-weight: 500;">Silakan masukkan <b>Token</b> atau <b>Email</b> Anda untuk mengakses ekosistem.</div></div>',
-        unsafe_allow_html=True,
-    )
+  st.markdown(
+      '<div style="background: #111827; padding: 28px 32px; border-radius:'
+      " 16px; border: 1px solid #1f2937; width: 100%; margin: 0 auto 20px auto;"
+      " box-shadow: 0 10px 30px rgba(0,0,0,0.5); text-align: center;"><div"
+      ' style="color: #818cf8; font-size: 20px; font-weight: 700;'
+      ' margin-bottom: 8px;">🔐 Login Portal EDUWIRA</div><div'
+      ' style="color: #e2e8f0; font-size: 16px; font-weight: 500;">Silakan'
+      " masukkan <b>Token</b> atau <b>Email</b> Anda untuk mengakses"
+      " ekosistem.</div></div>",
+      unsafe_allow_html=True,
+  )
 
-    col1, col2, col3 = st.columns([0.5, 3, 0.5])
-    with col2:
-        with st.form("form_login_gs"):
-            input_user = st.text_input(
-                "Token / Email",
-                placeholder="Contoh: EDU123 atau yustinussetyanta08@dinas.belajar.id",
+  col1, col2, col3 = st.columns([0.5, 3, 0.5])
+  with col2:
+    with st.form("form_login_gs"):
+      input_user = st.text_input(
+          "Token / Email",
+          placeholder=(
+              "Contoh: EDU123 atau yustinussetyanta08@dinas.belajar.id"
+          ),
+      )
+      st.markdown("<div style='height: 8px;'></div>", unsafe_allow_html=True)
+      btn_masuk = st.form_submit_button(
+          "🚀 Masuk Ekosistem", use_container_width=True
+      )
+
+      if btn_masuk:
+        if not input_user:
+          st.warning("⚠️ Mohon masukkan Token atau Email terlebih dahulu.")
+        else:
+          with st.spinner("Memverifikasi data dari Google Sheets..."):
+            try:
+              df_reg = get_school_records(
+                  MASTER_SPREADSHEET_ID, "DATABASE_MASTER_REGISTRY"
+              )
+            except Exception as e:
+              df_reg = pd.DataFrame()
+              st.error(f"Gagal membaca Google Sheets: {e}")
+
+          if not df_reg.empty:
+            df_reg.columns = df_reg.columns.str.strip()
+            cols_lower = {c.lower(): c for c in df_reg.columns}
+
+            token_col = cols_lower.get(
+                "token_unik",
+                cols_lower.get("token", df_reg.columns[0]),
             )
-            st.markdown("<div style='height: 8px;'></div>", unsafe_allow_html=True)
-            btn_masuk = st.form_submit_button("🚀 Masuk Ekosistem", use_container_width=True)
+            email_col = cols_lower.get(
+                "email",
+                (
+                    df_reg.columns[3]
+                    if len(df_reg.columns) > 3
+                    else df_reg.columns[1]
+                ),
+            )
+            admin_col = cols_lower.get(
+                "admin_pj",
+                cols_lower.get("admin_nama", df_reg.columns[2]),
+            )
+            sekolah_col = cols_lower.get("nama_sekolah", df_reg.columns[1])
+            role_col = cols_lower.get("role", None)
+            sheet_col = cols_lower.get("spreadsheet_id", None)
 
-            if btn_masuk:
-                if not input_user:
-                    st.warning("⚠️ Mohon masukkan Token atau Email terlebih dahulu.")
+            matched = df_reg[
+                (
+                    df_reg[token_col]
+                    .astype(str)
+                    .str.strip()
+                    .str.lower()
+                    == input_user.strip().lower()
+                )
+                | (
+                    df_reg[email_col]
+                    .astype(str)
+                    .str.strip()
+                    .str.lower()
+                    == input_user.strip().lower()
+                )
+            ]
+
+            if not matched.empty:
+              row = matched.iloc[0]
+              st.session_state.logged_in = True
+              st.session_state.admin_nama = str(
+                  row.get(admin_col, "Administrator")
+              )
+              st.session_state.nama_sekolah = str(
+                  row.get(sekolah_col, "Pusat Pengawas")
+              )
+              st.session_state.spreadsheet_id = (
+                  str(row.get(sheet_col, "")) if sheet_col else ""
+              )
+
+              r_val = (
+                  str(row.get(role_col, "")).strip().lower()
+                  if role_col
+                  else ""
+              )
+              if not r_val:
+                if (
+                    "dinas" in input_user.lower()
+                    or "yustinus" in st.session_state.admin_nama.lower()
+                ):
+                  st.session_state.role = "Pengawas"
                 else:
-                    with st.spinner("Memverifikasi data dari Google Sheets..."):
-                        try:
-                            df_reg = get_school_records(MASTER_SPREADSHEET_ID, "DATABASE_MASTER_REGISTRY")
-                        except Exception as e:
-                            df_reg = pd.DataFrame()
-                            st.error(f"Gagal membaca Google Sheets: {e}")
+                  st.session_state.role = "Sekolah"
+              else:
+                st.session_state.role = r_val.capitalize()
 
-                    if not df_reg.empty:
-                        df_reg.columns = df_reg.columns.str.strip()
-                        cols_lower = {c.lower(): c for c in df_reg.columns}
-
-                        token_col = cols_lower.get("token_unik", cols_lower.get("token", df_reg.columns[0]))
-                        email_col = cols_lower.get("email", df_reg.columns[3] if len(df_reg.columns) > 3 else df_reg.columns[1])
-                        admin_col = cols_lower.get("admin_pj", cols_lower.get("admin_nama", df_reg.columns[2]))
-                        sekolah_col = cols_lower.get("nama_sekolah", df_reg.columns[1])
-                        role_col = cols_lower.get("role", None)
-                        sheet_col = cols_lower.get("spreadsheet_id", None)
-
-                        matched = df_reg[
-                            (df_reg[token_col].astype(str).str.strip().str.lower() == input_user.strip().lower()) |
-                            (df_reg[email_col].astype(str).str.strip().str.lower() == input_user.strip().lower())
-                        ]
-
-                        if not matched.empty:
-                            row = matched.iloc[0]
-                            st.session_state.logged_in = True
-                            st.session_state.admin_nama = str(row.get(admin_col, "Administrator"))
-                            st.session_state.nama_sekolah = str(row.get(sekolah_col, "Pusat Pengawas"))
-                            st.session_state.spreadsheet_id = str(row.get(sheet_col, "")) if sheet_col else ""
-                            
-                            r_val = str(row.get(role_col, "")).strip().lower() if role_col else ""
-                            if not r_val:
-                                if "dinas" in input_user.lower() or "yustinus" in st.session_state.admin_nama.lower():
-                                    st.session_state.role = "Pengawas"
-                                else:
-                                    st.session_state.role = "Sekolah"
-                            else:
-                                st.session_state.role = r_val.capitalize()
-
-                            st.success(f"🎉 Berhasil masuk! Selamat datang, {st.session_state.admin_nama} ({st.session_state.nama_sekolah}).")
-                            st.rerun()
-                        else:
-                            st.error("❌ Token atau Email tidak ditemukan di `DATABASE_MASTER_REGISTRY`.")
-                    else:
-                        st.error("❌ Data `DATABASE_MASTER_REGISTRY` kosong atau gagal dimuat.")
+              st.success(
+                  f"🎉 Berhasil masuk! Selamat datang,"
+                  f" {st.session_state.admin_nama}"
+                  f" ({st.session_state.nama_sekolah})."
+              )
+              st.rerun()
+            else:
+              st.error(
+                  "❌ Token atau Email tidak ditemukan di"
+                  " `DATABASE_MASTER_REGISTRY`."
+              )
+          else:
+            st.error("❌ Data `DATABASE_MASTER_REGISTRY` kosong atau gagal dimuat.")
 
 # --- KONDISI 2: SUDAH LOGIN ---
 else:
-    # --- SIDEBAR INFORMASI AKUN & NAVIGASI ---
-    st.sidebar.markdown(f"👤 **Admin:** {st.session_state.admin_nama}")
+  # --- SIDEBAR INFORMASI AKUN & NAVIGASI ---
+  st.sidebar.markdown(f"👤 **Admin:** {st.session_state.admin_nama}")
 
-    unit_tampil = (
-        "Cabdin (Pengawas)"
-        if st.session_state.role.lower() == "pengawas"
-        else st.session_state.nama_sekolah
+  unit_tampil = (
+      "Cabdin (Pengawas)"
+      if st.session_state.role.lower() == "pengawas"
+      else st.session_state.nama_sekolah
+  )
+  st.sidebar.markdown(f"🏫 **Unit:** {unit_tampil}")
+  st.sidebar.markdown(f"🛡️ **Role:** `{st.session_state.role}`")
+  st.sidebar.divider()
+
+  st.sidebar.markdown("### 🧭 Menu Navigasi")
+
+  is_pengawas = (
+      st.session_state.role.lower() == "pengawas"
+      or "dinas" in st.session_state.admin_nama.lower()
+      or "dinas" in st.session_state.nama_sekolah.lower()
+  )
+
+  if is_pengawas:
+    menu = st.sidebar.radio(
+        "Pilih Menu",
+        [
+            "📊 Dashboard Rekap PS",
+            "🏫 Daftar SMK Binaan",
+        ],
     )
-    st.sidebar.markdown(f"🏫 **Unit:** {unit_tampil}")
-    st.sidebar.markdown(f"🛡️ **Role:** `{st.session_state.role}`")
-    st.sidebar.divider()
+  else:
+    menu = st.sidebar.radio(
+        "Pilih Menu",
+        [
+            "🏠 Dashboard Utama",
+            "📦 Katalog Produk (TeFa)",
+            "💰 Catat Transaksi / Kasir",
+            "📊 Laporan & Analitik",
+        ],
+    )
 
-    st.sidebar.markdown("### 🧭 Menu Navigasi")
+  st.sidebar.divider()
+  if st.sidebar.button("🚪 Keluar / Logout", use_container_width=True):
+    st.session_state.logged_in = False
+    st.session_state.admin_nama = ""
+    st.session_state.nama_sekolah = ""
+    st.session_state.role = ""
+    st.session_state.spreadsheet_id = ""
+    st.session_state.last_trx = None
+    st.rerun()
 
-    is_pengawas = st.session_state.role.lower() == "pengawas" or "dinas" in st.session_state.admin_nama.lower() or "dinas" in st.session_state.nama_sekolah.lower()
+  # ==========================================
+  # LOGIC KELOMPOK 1: MENU PENGAWAS
+  # ==========================================
+  if is_pengawas:
+    if menu == "📊 Dashboard Rekap PS":
+      st.markdown(
+          "### 📊 Dashboard Rekapitulasi Kewirausahaan Semua SMK Binaan"
+      )
+      st.write(
+          "Memantau rekapitulasi produk dan transaksi langsung dari Google"
+          " Spreadsheet masing-masing sekolah."
+      )
 
-    if is_pengawas:
-        menu = st.sidebar.radio(
-            "Pilih Menu",
-            [
-                "📊 Dashboard Rekap PS",
-                "🏫 Daftar SMK Binaan",
-            ],
+      try:
+        df_reg = get_school_records(
+            MASTER_SPREADSHEET_ID, "DATABASE_MASTER_REGISTRY"
         )
-    else:
-        menu = st.sidebar.radio(
-            "Pilih Menu",
-            [
-                "🏠 Dashboard Utama",
-                "📦 Katalog Produk (TeFa)",
-                "💰 Catat Transaksi / Kasir",
-                "📊 Laporan & Analitik",
-            ],
-        )
+      except Exception as e:
+        st.error(f"Gagal mengambil data registry dari Google Sheets: {e}")
+        df_reg = pd.DataFrame()
 
-    st.sidebar.divider()
-    if st.sidebar.button("🚪 Keluar / Logout", use_container_width=True):
-        st.session_state.logged_in = False
-        st.session_state.admin_nama = ""
-        st.session_state.nama_sekolah = ""
-        st.session_state.role = ""
-        st.session_state.spreadsheet_id = ""
-        st.session_state.last_trx = None
-        st.rerun()
+      if not df_reg.empty:
+        df_reg.columns = df_reg.columns.str.strip()
+        cols_lower = {c.lower(): c for c in df_reg.columns}
+        role_col = cols_lower.get("role", None)
 
-    # ==========================================
-    # LOGIC KELOMPOK 1: MENU PENGAWAS
-    # ==========================================
-    if is_pengawas:
-        if menu == "📊 Dashboard Rekap PS":
-            st.markdown("### 📊 Dashboard Rekapitulasi Kewirausahaan Semua SMK Binaan")
-            st.write("Memantau rekapitulasi produk dan transaksi langsung dari Google Spreadsheet masing-masing sekolah.")
-
-            try:
-                df_reg = get_school_records(MASTER_SPREADSHEET_ID, "DATABASE_MASTER_REGISTRY")
-            except Exception as e:
-                st.error(f"Gagal mengambil data registry dari Google Sheets: {e}")
-                df_reg = pd.DataFrame()
-
-            if not df_reg.empty:
-                df_reg.columns = df_reg.columns.str.strip()
-                cols_lower = {c.lower(): c for c in df_reg.columns}
-                role_col = cols_lower.get("role", None)
-
-                if role_col:
-                    df_sekolah = df_reg[df_reg[role_col].astype(str).str.strip().str.lower() != "pengawas"]
-                else:
-                    df_sekolah = df_reg
-
-                all_summary = []
-                total_omzet_all = 0
-                total_prod_all = 0
-                total_trx_all = 0
-
-                sekolah_col_name = cols_lower.get("nama_sekolah", df_reg.columns[1])
-                admin_col_name = cols_lower.get("admin_pj", cols_lower.get("admin_nama", df_reg.columns[2]))
-                sheet_id_col = cols_lower.get("spreadsheet_id", None)
-
-                dict_sekolah_sheet = {}
-
-                for _, row in df_sekolah.iterrows():
-                    sch_name = str(row.get(sekolah_col_name, "Sekolah"))
-                    admin_pj = str(row.get(admin_col_name, "-"))
-                    sch_sheet_id = str(row.get(sheet_id_col, "")) if sheet_id_col else ""
-                    
-                    dict_sekolah_sheet[sch_name] = sch_sheet_id
-
-                    prod_count = 0
-                    omzet_sekolah = 0
-                    trx_count = 0
-
-                    if sch_sheet_id:
-                        df_p_sch = get_school_records(sch_sheet_id, "MASTER_PRODUK")
-                        df_t_sch = get_school_records(sch_sheet_id, "TRANSAKSI")
-
-                        prod_count = len(df_p_sch)
-                        trx_count = len(df_t_sch)
-
-                        omzet_col = next((c for c in df_t_sch.columns if c.lower() in ["total_harga", "totalharga"]), None)
-                        if omzet_col and not df_t_sch.empty:
-                            omzet_sekolah = pd.to_numeric(df_t_sch[omzet_col], errors='coerce').sum()
-
-                    total_omzet_all += omzet_sekolah
-                    total_prod_all += prod_count
-                    total_trx_all += trx_count
-
-                    all_summary.append({
-                        "Nama Sekolah": sch_name,
-                        "Admin PJ": admin_pj,
-                        "Total Produk": prod_count,
-                        "Total Transaksi": trx_count,
-                        "Total Omzet (Rp)": omzet_sekolah,
-                    })
-
-                df_summary = pd.DataFrame(all_summary)
-
-                c1, c2, c3 = st.columns(3)
-                with c1:
-                    st.metric("Akumulasi Omzet Cabdin", f"Rp {total_omzet_all:,.0f}", delta="Semua Sekolah Binaan")
-                with c2:
-                    st.metric("Total Produk TeFa Terdaftar", f"{total_prod_all} Produk")
-                with c3:
-                    st.metric("Total Transaksi Keseluruhan", f"{total_trx_all} Transaksi")
-
-                st.markdown("---")
-
-                # --- FILTER PILIH SEKOLAH ---
-                st.markdown("#### 🔍 Filter Performa Detail SMK Binaan")
-                daftar_nama_sekolah = list(dict_sekolah_sheet.keys())
-                pilih_filter_sekolah = st.selectbox("Pilih Sekolah untuk Melihat Detail Transaksi", daftar_nama_sekolah)
-
-                if pilih_filter_sekolah:
-                    target_sheet_id = dict_sekolah_sheet.get(pilih_filter_sekolah, "")
-                    st.markdown(f"#### 📋 Tabel Performa Kewirausahaan {pilih_filter_sekolah}")
-                    
-                    if target_sheet_id:
-                        df_t_target = get_school_records(target_sheet_id, "TRANSAKSI")
-                        if not df_t_target.empty:
-                            df_t_target = df_t_target.reset_index(drop=True)
-                            df_t_target.index = range(1, len(df_t_target) + 1)
-                            st.dataframe(df_t_target, use_container_width=True)
-
-                            omzet_col_t = next((c for c in df_t_target.columns if c.lower() in ["total_harga", "totalharga"]), None)
-                            qty_col_t = next((c for c in df_t_target.columns if c.lower() in ["jumlah_terjual", "jumlahterjual"]), None)
-
-                            omzet_target = pd.to_numeric(df_t_target[omzet_col_t], errors='coerce').sum() if omzet_col_t else 0
-                            unit_target = pd.to_numeric(df_t_target[qty_col_t], errors='coerce').sum() if qty_col_t else len(df_t_target)
-
-                            col_d1, col_d2 = st.columns(2)
-                            with col_d1:
-                                st.metric("Total Omzet", f"Rp {omzet_target:,.0f}")
-                            with col_d2:
-                                st.metric("Total Unit Terjual", f"{unit_target} Unit")
-                        else:
-                            st.info(f"ℹ️ Belum ada data transaksi yang tercatat untuk unit {pilih_filter_sekolah}.")
-                    else:
-                        st.warning("⚠️ Spreadsheet ID untuk sekolah ini belum dikonfigurasi.")
-
-                st.markdown("---")
-                st.markdown("#### 📈 Rekapitulasi Keseluruhan SMK Binaan")
-                if not df_summary.empty:
-                    df_summary = df_summary.reset_index(drop=True)
-                    df_summary.index = range(1, len(df_summary) + 1)
-                    st.dataframe(df_summary, use_container_width=True)
-                else:
-                    st.info("Belum ada data rekapitulasi sekolah.")
-            else:
-                st.warning("Tabel `DATABASE_MASTER_REGISTRY` kosong.")
-        elif menu == "🏫 Daftar SMK Binaan":
-            st.markdown("### 🏫 Daftar Master Registry SMK Binaan (Google Sheets)")
-            st.write("Daftar akun sekolah binaan beserta Spreadsheet ID masing-masing.")
-
-            try:
-                df_reg = get_school_records(MASTER_SPREADSHEET_ID, "DATABASE_MASTER_REGISTRY")
-            except Exception:
-                df_reg = pd.DataFrame()
-
-            if not df_reg.empty:
-                df_reg = df_reg.reset_index(drop=True)
-                df_reg.index = range(1, len(df_reg) + 1)
-                st.dataframe(df_reg, use_container_width=True)
-            else:
-                st.info("Data registry belum tersedia.")
-
-    # ==========================================
-    # LOGIC KELOMPOK 2: MENU SEKOLAH MANDIRI
-    # ==========================================
-    else:
-        nama_sekolah_kini = st.session_state.nama_sekolah
-        active_spreadsheet_id = st.session_state.spreadsheet_id
-
-        if not active_spreadsheet_id:
-            st.error("❌ `spreadsheet_id` belum diatur untuk sekolah ini di tabel `DATABASE_MASTER_REGISTRY`. Hubungi Pengawas.")
+        if role_col:
+          df_sekolah = df_reg[
+              df_reg[role_col].astype(str).str.strip().str.lower()
+              != "pengawas"
+          ]
         else:
-            if menu == "🏠 Dashboard Utama":
-                st.markdown(f'<div style="color: #f3f4f6; font-size: 20px; font-weight: 700; margin-bottom: 10px;">Dashboard Utama - {nama_sekolah_kini}</div>', unsafe_allow_html=True)
-                st.info("Katalog produk dikelola langsung melalui Google Spreadsheet pada sheet **MASTER_PRODUK**. Data akan otomatis sinkron ke aplikasi.")
+          df_sekolah = df_reg
 
-                df_p = get_school_records(active_spreadsheet_id, "MASTER_PRODUK")
-                df_t = get_school_records(active_spreadsheet_id, "TRANSAKSI")
+        all_summary = []
+        total_omzet_all = 0
+        total_prod_all = 0
+        total_trx_all = 0
 
-                total_prod = len(df_p)
-                total_trx_count = len(df_t)
-                omzet_col = next((c for c in df_t.columns if c.lower() in ["total_harga", "totalharga"]), None)
-                total_omzet = pd.to_numeric(df_t[omzet_col], errors='coerce').sum() if (not df_t.empty and omzet_col) else 0
+        sekolah_col_name = cols_lower.get("nama_sekolah", df_reg.columns[1])
+        admin_col_name = cols_lower.get(
+            "admin_pj", cols_lower.get("admin_nama", df_reg.columns[2])
+        )
+        sheet_id_col = cols_lower.get("spreadsheet_id", None)
 
-                col_a, col_b, col_c = st.columns([1, 1, 1.4])
-                with col_a:
-                    st.metric(label="Total Produk Terdaftar", value=f"{total_prod} Produk", delta="Aktif")
-                with col_b:
-                    st.metric(label="Total Omzet Penjualan", value=f"Rp {total_omzet:,.0f}", delta=f"{total_trx_count} Transaksi")
-                with col_c:
-                    st.metric(label="Sumber Data", value="Google Sheets", delta="Terkoneksi")
+        dict_sekolah_sheet = {}
 
-            elif menu == "📦 Katalog Produk (TeFa)":
-                st.markdown("### 📦 Katalog Produk dan Jasa")
-                st.write(f"Daftar produk di bawah ini ditarik secara otomatis dari sheet **MASTER_PRODUK** di Google Spreadsheet unit **{nama_sekolah_kini}**.")
-                st.info("💡 *Tips: Anda cukup mengisi atau memperbarui data produk langsung di Google Spreadsheet Anda pada sheet `MASTER_PRODUK` (Kolom: Kategori | Nama_Produk | Harga | Jumlah_Stok | Deskripsi_Produk).*")
+        for _, row in df_sekolah.iterrows():
+          sch_name = str(row.get(sekolah_col_name, "Sekolah"))
+          admin_pj = str(row.get(admin_col_name, "-"))
+          sch_sheet_id = str(row.get(sheet_id_col, "")) if sheet_id_col else ""
 
-                df_p = get_school_records(active_spreadsheet_id, "MASTER_PRODUK")
+          dict_sekolah_sheet[sch_name] = sch_sheet_id
 
-                if not df_p.empty:
-                    df_p = df_p.reset_index(drop=True)
-                    df_p.index = range(1, len(df_p) + 1)
-                    st.dataframe(df_p, use_container_width=True)
-                else:
-                    st.warning("⚠️ Belum ada produk di sheet `MASTER_PRODUK` pada Google Spreadsheet sekolah Anda.")
+          prod_count = 0
+          omzet_sekolah = 0
+          trx_count = 0
 
-            elif menu == "💰 Catat Transaksi / Kasir":
-                st.markdown("### 💰 Pencatatan Transaksi & Cetak Struk")
-                st.write("Fitur kasir digital untuk mencatat penjualan produk dari `MASTER_PRODUK` langsung ke sheet `TRANSAKSI`.")
+          if sch_sheet_id:
+            df_p_sch = get_school_records(sch_sheet_id, "MASTER_PRODUK")
+            df_t_sch = get_school_records(sch_sheet_id, "TRANSAKSI")
 
-                df_p = get_school_records(active_spreadsheet_id, "MASTER_PRODUK")
+            prod_count = len(df_p_sch)
+            trx_count = len(df_t_sch)
 
-                if st.session_state.last_trx:
-                    t = st.session_state.last_trx
-                    st.success("🎉 Transaksi berhasil dicatat dan disinkronkan ke Google Spreadsheet!")
+            omzet_col = next(
+                (
+                    c
+                    for c in df_t_sch.columns
+                    if c.lower() in ["total_harga", "totalharga"]
+                ),
+                None,
+            )
+            if omzet_col and not df_t_sch.empty:
+              omzet_sekolah = pd.to_numeric(
+                  df_t_sch[omzet_col], errors="coerce"
+              ).sum()
 
-                    # --- PRATINJAU STRUK BERBASIS HTML MODERN (VISUAL KARTU RAPI) ---
-                    struk_html = f"""
+          total_omzet_all += omzet_sekolah
+          total_prod_all += prod_count
+          total_trx_all += trx_count
+
+          all_summary.append({
+              "Nama Sekolah": sch_name,
+              "Admin PJ": admin_pj,
+              "Total Produk": prod_count,
+              "Total Transaksi": trx_count,
+              "Total Omzet (Rp)": omzet_sekolah,
+          })
+
+        df_summary = pd.DataFrame(all_summary)
+
+        c1, c2, c3 = st.columns(3)
+        with c1:
+          st.metric(
+              "Akumulasi Omzet Cabdin",
+              f"Rp {total_omzet_all:,.0f}",
+              delta="Semua Sekolah Binaan",
+          )
+        with c2:
+          st.metric("Total Produk TeFa Terdaftar", f"{total_prod_all} Produk")
+        with c3:
+          st.metric("Total Transaksi Keseluruhan", f"{total_trx_all} Transaksi")
+
+        st.markdown("---")
+
+        # --- FILTER PILIH SEKOLAH ---
+        st.markdown("#### 🔍 Filter Performa Detail SMK Binaan")
+        daftar_nama_sekolah = list(dict_sekolah_sheet.keys())
+        pilih_filter_sekolah = st.selectbox(
+            "Pilih Sekolah untuk Melihat Detail Transaksi", daftar_nama_sekolah
+        )
+
+        if pilih_filter_sekolah:
+          target_sheet_id = dict_sekolah_sheet.get(pilih_filter_sekolah, "")
+          st.markdown(
+              f"#### 📋 Tabel Performa Kewirausahaan {pilih_filter_sekolah}"
+          )
+
+          if target_sheet_id:
+            df_t_target = get_school_records(target_sheet_id, "TRANSAKSI")
+            if not df_t_target.empty:
+              df_t_target = df_t_target.reset_index(drop=True)
+              df_t_target.index = range(1, len(df_t_target) + 1)
+              st.dataframe(df_t_target, use_container_width=True)
+
+              omzet_col_t = next(
+                  (
+                      c
+                      for c in df_t_target.columns
+                      if c.lower() in ["total_harga", "totalharga"]
+                  ),
+                  None,
+              )
+              qty_col_t = next(
+                  (
+                      c
+                      for c in df_t_target.columns
+                      if c.lower() in ["jumlah_terjual", "jumlahterjual"]
+                  ),
+                  None,
+              )
+
+              omzet_target = (
+                  pd.to_numeric(df_t_target[omzet_col_t], errors="coerce").sum()
+                  if omzet_col_t
+                  else 0
+              )
+              unit_target = (
+                  pd.to_numeric(df_t_target[qty_col_t], errors="coerce").sum()
+                  if qty_col_t
+                  else len(df_t_target)
+              )
+
+              col_d1, col_d2 = st.columns(2)
+              with col_d1:
+                st.metric("Total Omzet", f"Rp {omzet_target:,.0f}")
+              with col_d2:
+                st.metric("Total Unit Terjual", f"{unit_target} Unit")
+            else:
+              st.info(
+                  f"ℹ️ Belum ada data transaksi yang tercatat untuk unit"
+                  f" {pilih_filter_sekolah}."
+              )
+          else:
+            st.warning(
+                "⚠️ Spreadsheet ID untuk sekolah ini belum dikonfigurasi."
+            )
+
+        st.markdown("---")
+        st.markdown("#### 📈 Rekapitulasi Keseluruhan SMK Binaan")
+        if not df_summary.empty:
+          df_summary = df_summary.reset_index(drop=True)
+          df_summary.index = range(1, len(df_summary) + 1)
+          st.dataframe(df_summary, use_container_width=True)
+        else:
+          st.info("Belum ada data rekapitulasi sekolah.")
+      else:
+        st.warning("Tabel `DATABASE_MASTER_REGISTRY` kosong.")
+    elif menu == "🏫 Daftar SMK Binaan":
+      st.markdown("### 🏫 Daftar Master Registry SMK Binaan (Google Sheets)")
+      st.write("Daftar akun sekolah binaan beserta Spreadsheet ID masing-masing.")
+
+      try:
+        df_reg = get_school_records(
+            MASTER_SPREADSHEET_ID, "DATABASE_MASTER_REGISTRY"
+        )
+      except Exception:
+        df_reg = pd.DataFrame()
+
+      if not df_reg.empty:
+        df_reg = df_reg.reset_index(drop=True)
+        df_reg.index = range(1, len(df_reg) + 1)
+        st.dataframe(df_reg, use_container_width=True)
+      else:
+        st.info("Data registry belum tersedia.")
+
+  # ==========================================
+  # LOGIC KELOMPOK 2: MENU SEKOLAH MANDIRI
+  # ==========================================
+  else:
+    nama_sekolah_kini = st.session_state.nama_sekolah
+    active_spreadsheet_id = st.session_state.spreadsheet_id
+
+    if not active_spreadsheet_id:
+      st.error(
+          "❌ `spreadsheet_id` belum diatur untuk sekolah ini di tabel"
+          " `DATABASE_MASTER_REGISTRY`. Hubungi Pengawas."
+      )
+    else:
+      if menu == "🏠 Dashboard Utama":
+        st.markdown(
+            f'<div style="color: #f3f4f6; font-size: 20px; font-weight: 700;'
+            f' margin-bottom: 10px;">Dashboard Utama -'
+            f" {nama_sekolah_kini}</div>",
+            unsafe_allow_html=True,
+        )
+        st.info(
+            "Katalog produk dikelola langsung melalui Google Spreadsheet pada"
+            " sheet **MASTER_PRODUK**. Data akan otomatis sinkron ke"
+            " aplikasi."
+        )
+
+        df_p = get_school_records(active_spreadsheet_id, "MASTER_PRODUK")
+        df_t = get_school_records(active_spreadsheet_id, "TRANSAKSI")
+
+        total_prod = len(df_p)
+        total_trx_count = len(df_t)
+        omzet_col = next(
+            (
+                c
+                for c in df_t.columns
+                if c.lower() in ["total_harga", "totalharga"]
+            ),
+            None,
+        )
+        total_omzet = (
+            pd.to_numeric(df_t[omzet_col], errors="coerce").sum()
+            if (not df_t.empty and omzet_col)
+            else 0
+        )
+
+        col_a, col_b, col_c = st.columns([1, 1, 1.4])
+        with col_a:
+          st.metric(
+              label="Total Produk Terdaftar",
+              value=f"{total_prod} Produk",
+              delta="Aktif",
+          )
+        with col_b:
+          st.metric(
+              label="Total Omzet Penjualan",
+              value=f"Rp {total_omzet:,.0f}",
+              delta=f"{total_trx_count} Transaksi",
+          )
+        with col_c:
+          st.metric(
+              label="Sumber Data", value="Google Sheets", delta="Terkoneksi"
+          )
+
+      elif menu == "📦 Katalog Produk (TeFa)":
+        st.markdown("### 📦 Katalog Produk dan Jasa")
+        st.write(
+            "Daftar produk di bawah ini ditarik secara otomatis dari sheet"
+            f" **MASTER_PRODUK** di Google Spreadsheet unit"
+            f" **{nama_sekolah_kini}**."
+        )
+        st.info(
+            "💡 *Tips: Anda cukup mengisi atau memperbarui data produk"
+            " langsung di Google Spreadsheet Anda pada sheet `MASTER_PRODUK`"
+            " (Kolom: Kategori | Nama_Produk | Harga | Jumlah_Stok |"
+            " Deskripsi_Produk).* "
+        )
+
+        df_p = get_school_records(active_spreadsheet_id, "MASTER_PRODUK")
+
+        if not df_p.empty:
+          df_p = df_p.reset_index(drop=True)
+          df_p.index = range(1, len(df_p) + 1)
+          st.dataframe(df_p, use_container_width=True)
+        else:
+          st.warning(
+              "⚠️ Belum ada produk di sheet `MASTER_PRODUK` pada Google"
+              " Spreadsheet sekolah Anda."
+          )
+
+      elif menu == "💰 Catat Transaksi / Kasir":
+        st.markdown("### 💰 Pencatatan Transaksi & Cetak Struk")
+        st.write(
+            "Fitur kasir digital untuk mencatat penjualan produk dari"
+            " `MASTER_PRODUK` langsung ke sheet `TRANSAKSI`."
+        )
+
+        df_p = get_school_records(active_spreadsheet_id, "MASTER_PRODUK")
+
+        if st.session_state.last_trx:
+          t = st.session_state.last_trx
+          st.success(
+              "🎉 Transaksi berhasil dicatat dan disinkronkan ke Google"
+              " Spreadsheet!"
+          )
+
+          # --- PRATINJAU STRUK BERBASIS HTML MODERN (VISUAL KARTU RAPI) ---
+          struk_html = f"""
                     <!DOCTYPE html>
                     <html>
                     <head>
@@ -543,14 +721,15 @@ else:
                     </html>
                     """
 
-                    st.markdown("### 🧾 Pratinjau Struk Pembelian")
-                    
-                    import streamlit.components.v1 as components
-                    components.html(struk_html, height=360, scrolling=False)
-                    
-                    st.markdown("<div style='height: 10px;'></div>", unsafe_allow_html=True)
+          st.markdown("### 🧾 Pratinjau Struk Pembelian")
 
-                    struk_plain = f"""========================================
+          import streamlit.components.v1 as components
+
+          components.html(struk_html, height=360, scrolling=False)
+
+          st.markdown("<div style='height: 10px;'></div>", unsafe_allow_html=True)
+
+          struk_plain = f"""========================================
        STRUK PEMBELIAN / NOTA TeFa      
            {nama_sekolah_kini.upper()}       
 ========================================
@@ -568,118 +747,227 @@ TOTAL BAYAR  : Rp {t['total']:,.0f}
 ========================================
 """
 
-                    col_d1, col_d2 = st.columns(2)
-                    with col_d1:
-                        st.download_button(
-                            label="📥 Download Struk (TXT)",
-                            data=struk_plain,
-                            file_name=f"Struk_{t['id_trx']}.txt",
-                            mime="text/plain",
-                            use_container_width=True,
-                        )
-                    with col_d2:
-                        if st.button("🔄 Catat Transaksi Baru", use_container_width=True):
-                            st.session_state.last_trx = None
-                            st.rerun()
+          col_d1, col_d2 = st.columns(2)
+          with col_d1:
+            st.download_button(
+                label="📥 Download Struk (TXT)",
+                data=struk_plain,
+                file_name=f"Struk_{t['id_trx']}.txt",
+                mime="text/plain",
+                use_container_width=True,
+            )
+          with col_d2:
+            if st.button("🔄 Catat Transaksi Baru", use_container_width=True):
+              st.session_state.last_trx = None
+              st.rerun()
 
-                    st.markdown("---")
+          st.markdown("---")
 
-                if not st.session_state.last_trx:
-                    if not df_p.empty:
-                        df_p.columns = df_p.columns.str.strip()
-                        name_key = next((c for c in df_p.columns if c.lower() in ["nama_produk", "namaproduk"]), df_p.columns[1])
-                        list_produk = df_p[name_key].tolist()
-                        pilih_produk = st.selectbox("Pilih Produk atau Jasa Layanan", list_produk)
+        if not st.session_state.last_trx:
+          if not df_p.empty:
+            df_p.columns = df_p.columns.str.strip()
+            name_key = next(
+                (
+                    c
+                    for c in df_p.columns
+                    if c.lower() in ["nama_produk", "namaproduk"]
+                ),
+                df_p.columns[1],
+            )
+            list_produk = df_p[name_key].tolist()
+            pilih_produk = st.selectbox(
+                "Pilih Produk atau Jasa Layanan", list_produk
+            )
 
-                        selected_row = df_p[df_p[name_key] == pilih_produk].iloc[0]
-                        price_key = next((c for c in df_p.columns if c.lower() == "harga"), "Harga")
-                        stock_key = next((c for c in df_p.columns if c.lower() in ["jumlah_stok", "jumlahstok", "stok"]), "Jumlah_Stok")
-                        
-                        # Deteksi aman apakah produk berupa kategori jasa/layanan
-                        kategori_val = str(selected_row.get("Kategori", "")).lower()
-                        is_jasa = "jasa" in kategori_val or "layanan" in kategori_val
+            selected_row = df_p[df_p[name_key] == pilih_produk].iloc[0]
+            price_key = next(
+                (c for c in df_p.columns if c.lower() == "harga"), "Harga"
+            )
+            stock_key = next(
+                (
+                    c
+                    for c in df_p.columns
+                    if c.lower() in ["jumlah_stok", "jumlahstok", "stok"]
+                ),
+                "Jumlah_Stok",
+            )
 
-                        harga_satuan = float(selected_row.get(price_key, 0))
-                        stok_tersedia = int(selected_row.get(stock_key, 0))
+            # Deteksi aman apakah produk berupa kategori jasa/layanan
+            kategori_val = str(selected_row.get("Kategori", "")).lower()
+            is_jasa = (
+                "jasa" in kategori_val
+                or "layanan" in kategori_val
+                or "pemasangan" in kategori_val
+            )
 
-                        st.info(f"💵 Harga Satuan: Rp {harga_satuan:,.0f} | 📦 Stok Tersedia: {stok_tersedia}")
+            # --- AMAN: Konversi Harga Satuan dari Sheet ---
+            val_harga = selected_row.get(price_key, 0)
+            try:
+              harga_default = (
+                  float(val_harga)
+                  if pd.notna(val_harga) and str(val_harga).strip() != ""
+                  else 0.0
+              )
+            except (ValueError, TypeError):
+              harga_default = 0.0
 
-                        with st.form("form_transaksi_gs"):
-                            tanggal_trx = st.date_input("Tanggal Transaksi", value=datetime.now().date())
+            # --- AMAN: Konversi Stok Tersedia dari Sheet ---
+            val_stok = selected_row.get(stock_key, 0)
+            try:
+              stok_tersedia = (
+                  int(float(val_stok))
+                  if pd.notna(val_stok) and str(val_stok).strip() != ""
+                  else 0
+              )
+            except (ValueError, TypeError):
+              stok_tersedia = 0
 
-                            jumlah_beli = st.number_input(
-                                "Jumlah / Frekuensi",
-                                min_value=1,
-                                max_value=max(1, stok_tersedia) if not is_jasa else 9999,
-                                step=1,
-                            )
-                            pembeli_input = st.text_input("Nama Pembeli / Keterangan (Opsional)", value="Umum")
-                            total_harga = harga_satuan * jumlah_beli
-                            st.markdown(f"**Total Harga: Rp {total_harga:,.0f}**")
+            # Peringatan jika harga belum diset (misal 0 untuk item kustom/jasa)
+            if harga_default == 0:
+              st.warning(
+                  "⚠ Produk/Jasa ini belum memiliki patokan harga tetap di"
+                  " Master Produk. Silakan masukkan harga secara manual pada"
+                  " form di bawah."
+              )
+              st.info(f"Stok Tersedia: {stok_tersedia}")
+            else:
+              st.info(
+                  f"Harga Standar: Rp {harga_default:,.0f} | Stok Tersedia:"
+                  f" {stok_tersedia}"
+              )
 
-                            submit_trx = st.form_submit_button("🛒 Proses Transaksi & Simpan")
+            with st.form("form_transaksi_gs"):
+              tanggal_trx = st.date_input(
+                  "Tanggal Transaksi", value=datetime.now().date()
+              )
 
-                            if submit_trx:
-                                id_trx = str(uuid.uuid4())[:8].upper()
-                                
-                                gabung_waktu = datetime.combine(tanggal_trx, datetime.now().time())
-                                waktu_sekarang = gabung_waktu.strftime("%Y-%m-%d %H:%M:%S")
+              # --- INPUT MANUAL HARGA (Bisa disesuaikan / diisi jika 0) ---
+              harga_satuan = st.number_input(
+                  "Harga Satuan (Rp) *Dapat disesuaikan atau diisi manual*",
+                  min_value=0.0,
+                  value=float(harga_default),
+                  step=1000.0,
+                  format="%0.f",
+              )
 
-                                new_trx_row = {
-                                    "ID_Transaksi": id_trx,
-                                    "Tanggal": waktu_sekarang,
-                                    "Sekolah": nama_sekolah_kini,
-                                    "Nama_Produk": pilih_produk,
-                                    "Jumlah_Terjual": int(jumlah_beli),
-                                    "Total_Harga": float(total_harga),
-                                    "Pembeli": pembeli_input
-                                }
-                                         
-                                succ_trx, err_msg = append_school_record(active_spreadsheet_id, "TRANSAKSI", new_trx_row)
-                                
-                                if succ_trx:
-                                    # Kurangi stok otomatis HANYA jika bukan produk jasa/layanan
-                                    if not is_jasa:
-                                        new_stock = max(0, stok_tersedia - int(jumlah_beli))
-                                        update_school_stock_by_name(active_spreadsheet_id, "MASTER_PRODUK", pilih_produk, new_stock)
-                                    
-                                    st.session_state.last_trx = {
-                                        "id_trx": id_trx,
-                                        "waktu": waktu_sekarang,
-                                        "produk": pilih_produk,
-                                        "harga_satuan": harga_satuan,
-                                        "jumlah": jumlah_beli,
-                                        "total": total_harga,
-                                        "kasir": st.session_state.admin_nama,
-                                    }
-                                    st.rerun()
-                                else:
-                                    st.error(f"❌ Gagal mencatat transaksi: {err_msg}")
-                    else:
-                        st.warning("⚠️ Belum ada data produk di sheet `MASTER_PRODUK` pada Google Spreadsheet Anda.")
+              jumlah_beli = st.number_input(
+                  "Jumlah / Frekuensi",
+                  min_value=1,
+                  max_value=max(1, stok_tersedia) if not is_jasa else 9999,
+                  step=1,
+              )
+              pembeli_input = st.text_input(
+                  "Nama Pembeli / Keterangan (Opsional)", value="Umum"
+              )
 
-            elif menu == "📊 Laporan & Analitik":
-                st.markdown("### 📊 Laporan & Analitik Penjualan")
-                st.write(f"Analisis riwayat transaksi penjualan untuk unit **{nama_sekolah_kini}**.")
+              total_harga = harga_satuan * jumlah_beli
+              st.markdown(f"**Total Harga: Rp {total_harga:,.0f}**")
 
-                df_t = get_school_records(active_spreadsheet_id, "TRANSAKSI")
+              submit_trx = st.form_submit_button(
+                  "🛒 Proses Transaksi & Simpan"
+              )
 
-                if not df_t.empty:
-                    df_t = df_t.reset_index(drop=True)
-                    df_t.index = range(1, len(df_t) + 1)
-                    st.markdown("#### Riwayat Transaksi Penjualan")
-                    st.dataframe(df_t, use_container_width=True)
+              if submit_trx:
+                id_trx = str(uuid.uuid4())[:8].upper()
 
-                    omzet_col = next((c for c in df_t.columns if c.lower() in ["total_harga", "totalharga"]), None)
-                    qty_col = next((c for c in df_t.columns if c.lower() in ["jumlah_terjual", "jumlahterjual"]), None)
+                gabung_waktu = datetime.combine(
+                    tanggal_trx, datetime.now().time()
+                )
+                waktu_sekarang = gabung_waktu.strftime("%Y-%m-%d %H:%M:%S")
 
-                    total_omzet_rep = pd.to_numeric(df_t[omzet_col], errors='coerce').sum() if omzet_col else 0
-                    total_item_sold = pd.to_numeric(df_t[qty_col], errors='coerce').sum() if qty_col else len(df_t)
+                new_trx_row = {
+                    "ID_Transaksi": id_trx,
+                    "Tanggal": waktu_sekarang,
+                    "Sekolah": nama_sekolah_kini,
+                    "Nama_Produk": pilih_produk,
+                    "Jumlah_Terjual": int(jumlah_beli),
+                    "Total_Harga": float(total_harga),
+                    "Pembeli": pembeli_input,
+                }
 
-                    col1, col2 = st.columns(2)
-                    with col1:
-                        st.metric("Total Omzet", f"Rp {total_omzet_rep:,.0f}")
-                    with col2:
-                        st.metric("Total Unit Terjual", f"{total_item_sold} Unit")
+                succ_trx, err_msg = append_school_record(
+                    active_spreadsheet_id, "TRANSAKSI", new_trx_row
+                )
+
+                if succ_trx:
+                  # Kurangi stok otomatis HANYA jika bukan produk jasa/layanan
+                  if not is_jasa:
+                    new_stock = max(0, stok_tersedia - int(jumlah_beli))
+                    update_school_stock_by_name(
+                        active_spreadsheet_id,
+                        "MASTER_PRODUK",
+                        pilih_produk,
+                        new_stock,
+                    )
+
+                  st.session_state.last_trx = {
+                      "id_trx": id_trx,
+                      "waktu": waktu_sekarang,
+                      "produk": pilih_produk,
+                      "harga_satuan": harga_satuan,
+                      "jumlah": jumlah_beli,
+                      "total": total_harga,
+                      "kasir": st.session_state.admin_nama,
+                  }
+                  st.rerun()
                 else:
-                    st.info("ℹ️ Belum ada data transaksi yang tercatat di Google Spreadsheet Anda (atau sheet 'TRANSAKSI' belum tersedia).")
+                  st.error(f"❌ Gagal mencatat transaksi: {err_msg}")
+          else:
+            st.warning(
+                "⚠️ Belum ada data produk di sheet `MASTER_PRODUK` pada Google"
+                " Spreadsheet Anda."
+            )
+
+      elif menu == "📊 Laporan & Analitik":
+        st.markdown("### 📊 Laporan & Analitik Penjualan")
+        st.write(
+            "Analisis riwayat transaksi penjualan untuk unit"
+            f" **{nama_sekolah_kini}**."
+        )
+
+        df_t = get_school_records(active_spreadsheet_id, "TRANSAKSI")
+
+        if not df_t.empty:
+          df_t = df_t.reset_index(drop=True)
+          df_t.index = range(1, len(df_t) + 1)
+          st.markdown("#### Riwayat Transaksi Penjualan")
+          st.dataframe(df_t, use_container_width=True)
+
+          omzet_col = next(
+              (
+                  c
+                  for c in df_t.columns
+                  if c.lower() in ["total_harga", "totalharga"]
+              ),
+              None,
+          )
+          qty_col = next(
+              (
+                  c
+                  for c in df_t.columns
+                  if c.lower() in ["jumlah_terjual", "jumlahterjual"]
+              ),
+              None,
+          )
+
+          total_omzet_rep = (
+              pd.to_numeric(df_t[omzet_col], errors="coerce").sum()
+              if omzet_col
+              else 0
+          )
+          total_item_sold = (
+              pd.to_numeric(df_t[qty_col], errors="coerce").sum()
+              if qty_col
+              else len(df_t)
+          )
+
+          col1, col2 = st.columns(2)
+          with col1:
+            st.metric("Total Omzet", f"Rp {total_omzet_rep:,.0f}")
+          with col2:
+            st.metric("Total Unit Terjual", f"{total_item_sold} Unit")
+        else:
+          st.info(
+              "ℹ️ Belum ada data transaksi yang tercatat di Google Spreadsheet"
+              " Anda (atau sheet 'TRANSAKSI' belum tersedia)."
+          )
