@@ -153,14 +153,12 @@ st.markdown(
 # --- KONDISI 1: BELUM LOGIN ---
 if not st.session_state.logged_in:
   st.markdown(
-      '<div style="background: #111827; padding: 28px 32px; border-radius:'
-      " 16px; border: 1px solid #1f2937; width: 100%; margin: 0 auto 20px auto;"
-      " box-shadow: 0 10px 30px rgba(0,0,0,0.5); text-align: center;"><div"
-      ' style="color: #818cf8; font-size: 20px; font-weight: 700;'
-      ' margin-bottom: 8px;">🔐 Login Portal EDUWIRA</div><div'
-      ' style="color: #e2e8f0; font-size: 16px; font-weight: 500;">Silakan'
-      " masukkan <b>Token</b> atau <b>Email</b> Anda untuk mengakses"
-      " ekosistem.</div></div>",
+      """
+        <div style="background: #111827; padding: 28px 32px; border-radius: 16px; border: 1px solid #1f2937; width: 100%; margin: 0 auto 20px auto; box-shadow: 0 10px 30px rgba(0,0,0,0.5); text-align: center;">
+            <div style="color: #818cf8; font-size: 20px; font-weight: 700; margin-bottom: 8px;">🔐 Login Portal EDUWIRA</div>
+            <div style="color: #e2e8f0; font-size: 16px; font-weight: 500;">Silakan masukkan <b>Token</b> atau <b>Email</b> Anda untuk mengakses ekosistem.</div>
+        </div>
+        """,
       unsafe_allow_html=True,
   )
 
