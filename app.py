@@ -21,6 +21,7 @@ def get_gspread_client():
   return client
 
 
+@st.cache_data(ttl=300)  # Menyimpan cache selama 5 menit
 def get_school_records(spreadsheet_id, sheet_name):
   try:
     client = get_gspread_client()
@@ -28,7 +29,7 @@ def get_school_records(spreadsheet_id, sheet_name):
     worksheet = sh.worksheet(sheet_name)
     data = worksheet.get_all_records()
     return pd.DataFrame(data)
-  except Exception:
+  except Exception as e:
     return pd.DataFrame()
 
 
