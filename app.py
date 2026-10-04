@@ -344,9 +344,9 @@ else:
         [
             "🏠 Dashboard Utama",
             "📦 Katalog Produk (TeFa)",
+            "🛍️ Etalase Digital",
             "💰 Catat Transaksi / Kasir",
             "📊 Laporan & Analitik",
-            "🛍️ Etalase Digital",
         ],
     )
 
@@ -1038,7 +1038,7 @@ TOTAL BAYAR  : Rp {t['total']:,.0f}
             f"### 🛍 Etalase Digital Produk & Jasa TeFa - {nama_sekolah_kini}"
         )
         st.write(
-            "Katalog produk dan layanan unggulan hasil Teaching Factory (TeFa)"
+            "Katalog produk dan layanan unggulan Kewirausahaan / TeFa"
             " SMK."
         )
 
