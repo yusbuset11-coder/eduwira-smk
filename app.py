@@ -78,16 +78,35 @@ def update_school_stock_by_name(spreadsheet_id, sheet_name, prod_name, new_stock
 def format_gdrive_url(url):
   if pd.isna(url) or str(url).strip() == "":
     return "https://via.placeholder.com/300x200?text=Produk+EDUWIRA"
+
   url_str = str(url).strip()
-  if "http" not in url_str:
-    return f"https://drive.google.com/uc?export=view&id={url_str}"
-  elif "drive.google.com" in url_str and "/d/" in url_str:
-    try:
-      file_id = url_str.split("/d/")[1].split("/")[0]
-      return f"https://drive.google.com/uc?export=view&id={file_id}"
-    except:
-      return url_str
-  return url_str
+  file_id = ""
+
+  # Ekstrak File ID dari berbagai bentuk link Google Drive
+  if "drive.google.com" in url_str:
+    if "/d/" in url_str:
+      try:
+        file_id = url_str.split("/d/")[1].split("/")[0]
+      except:
+        pass
+    elif "id=" in url_str:
+      try:
+        file_id = url_str.split("id=")[1].split("&")[0]
+      except:
+        pass
+  elif len(url_str) > 20 and "/" not in url_str:
+    # Jika yang diinput langsung ID filenya saja
+    file_id = url_str
+
+  # Gunakan direct link Google UserContent agar mulus di Streamlit
+  if file_id:
+    return f"https://lh3.googleusercontent.com/d/{file_id}"
+
+  return (
+      url_str
+      if "http" in url_str
+      else "https://via.placeholder.com/300x200?text=Produk+EDUWIRA"
+  )
 
 
 # --- KONFIGURASI HALAMAN UTAMA ---
@@ -1016,7 +1035,7 @@ TOTAL BAYAR  : Rp {t['total']:,.0f}
 
       elif menu == "🛍️ Etalase Digital":
         st.markdown(
-            f"### 🛍️️ Etalase Digital Produk & Jasa TeFa - {nama_sekolah_kini}"
+            f"### 🛍 Etalase Digital Produk & Jasa TeFa - {nama_sekolah_kini}"
         )
         st.write(
             "Katalog produk dan layanan unggulan hasil Teaching Factory (TeFa)"
