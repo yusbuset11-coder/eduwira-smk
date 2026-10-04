@@ -75,6 +75,21 @@ def update_school_stock_by_name(spreadsheet_id, sheet_name, prod_name, new_stock
     return False
 
 
+def format_gdrive_url(url):
+  if pd.isna(url) or str(url).strip() == "":
+    return "https://via.placeholder.com/300x200?text=Produk+EDUWIRA"
+  url_str = str(url).strip()
+  if "http" not in url_str:
+    return f"https://drive.google.com/uc?export=view&id={url_str}"
+  elif "drive.google.com" in url_str and "/d/" in url_str:
+    try:
+      file_id = url_str.split("/d/")[1].split("/")[0]
+      return f"https://drive.google.com/uc?export=view&id={file_id}"
+    except:
+      return url_str
+  return url_str
+
+
 # --- KONFIGURASI HALAMAN UTAMA ---
 st.set_page_config(
     page_title="EDUWIRA SMK - Ekosistem Digital Untuk Kewirausahaan SMK",
@@ -312,6 +327,7 @@ else:
             "📦 Katalog Produk (TeFa)",
             "💰 Catat Transaksi / Kasir",
             "📊 Laporan & Analitik",
+            "🛍️ Etalase Digital",
         ],
     )
 
@@ -596,7 +612,7 @@ else:
             "💡 *Tips: Anda cukup mengisi atau memperbarui data produk"
             " langsung di Google Spreadsheet Anda pada sheet `MASTER_PRODUK`"
             " (Kolom: Kategori | Nama_Produk | Harga | Jumlah_Stok |"
-            " Deskripsi_Produk).* "
+            " Deskripsi_Produk | Foto_Produk | No_WhatsApp).* "
         )
 
         df_p = get_school_records(active_spreadsheet_id, "MASTER_PRODUK")
@@ -766,7 +782,6 @@ TOTAL BAYAR  : Rp {t['total']:,.0f}
           if not df_p.empty:
             df_p.columns = df_p.columns.str.strip()
 
-            # --- TAMBAHAN FILTER KATEGORI ---
             cat_key = next(
                 (
                     c
@@ -785,7 +800,6 @@ TOTAL BAYAR  : Rp {t['total']:,.0f}
                 "Pilih Kategori Produk/Jasa", list_kategori
             )
 
-            # Filter dataframe berdasarkan kategori yang dipilih
             df_filtered = (
                 df_p[df_p[cat_key].astype(str) == pilih_kategori]
                 if pilih_kategori in list_kategori
@@ -826,7 +840,6 @@ TOTAL BAYAR  : Rp {t['total']:,.0f}
                   "Jumlah_Stok",
               )
 
-              # Deteksi aman apakah produk berupa kategori jasa/layanan
               kategori_val = str(selected_row.get(cat_key, "")).lower()
               is_jasa = (
                   "jasa" in kategori_val
@@ -834,7 +847,6 @@ TOTAL BAYAR  : Rp {t['total']:,.0f}
                   or "pemasangan" in kategori_val
               )
 
-              # --- AMAN: Konversi Harga Satuan dari Sheet ---
               val_harga = selected_row.get(price_key, 0)
               try:
                 harga_default = (
@@ -845,7 +857,6 @@ TOTAL BAYAR  : Rp {t['total']:,.0f}
               except (ValueError, TypeError):
                 harga_default = 0.0
 
-              # --- AMAN: Konversi Stok Tersedia dari Sheet ---
               val_stok = selected_row.get(stock_key, 0)
               try:
                 stok_tersedia = (
@@ -856,7 +867,6 @@ TOTAL BAYAR  : Rp {t['total']:,.0f}
               except (ValueError, TypeError):
                 stok_tersedia = 0
 
-              # Peringatan jika harga belum diset (misal 0 untuk item kustom/jasa)
               if harga_default == 0:
                 st.warning(
                     "⚠ Produk/Jasa ini belum memiliki patokan harga tetap di"
@@ -875,7 +885,6 @@ TOTAL BAYAR  : Rp {t['total']:,.0f}
                     "Tanggal Transaksi", value=datetime.now().date()
                 )
 
-                # --- INPUT MANUAL HARGA (Bisa disesuaikan / diisi jika 0) ---
                 harga_satuan = st.number_input(
                     "Harga Satuan (Rp) *Dapat disesuaikan atau diisi manual*",
                     min_value=0.0,
@@ -924,7 +933,6 @@ TOTAL BAYAR  : Rp {t['total']:,.0f}
                   )
 
                   if succ_trx:
-                    # Kurangi stok otomatis HANYA jika bukan produk jasa/layanan
                     if not is_jasa:
                       new_stock = max(0, stok_tersedia - int(jumlah_beli))
                       update_school_stock_by_name(
@@ -1005,3 +1013,63 @@ TOTAL BAYAR  : Rp {t['total']:,.0f}
               "ℹ️ Belum ada data transaksi yang tercatat di Google Spreadsheet"
               " Anda (atau sheet 'TRANSAKSI' belum tersedia)."
           )
+
+      elif menu == "🛍️ Etalase Digital":
+        st.markdown(
+            f"### 🛍️️ Etalase Digital Produk & Jasa TeFa - {nama_sekolah_kini}"
+        )
+        st.write(
+            "Katalog produk dan layanan unggulan hasil Teaching Factory (TeFa)"
+            " SMK."
+        )
+
+        df_p = get_school_records(active_spreadsheet_id, "MASTER_PRODUK")
+
+        if not df_p.empty:
+          df_p.columns = df_p.columns.str.strip()
+          cols = st.columns(3)
+
+          for index, row in df_p.iterrows():
+            nama_prod = row.get("Nama_Produk", "Produk Vokasi")
+            kategori = row.get("Kategori", "Umum")
+            harga = row.get("Harga", 0)
+            stok = row.get("Jumlah_Stok", 0)
+            desc = row.get(
+                "Deskripsi_Produk",
+                "Produk berkualitas hasil TeFa SMK.",
+            )
+
+            raw_foto = row.get("Foto_Produk", "")
+            foto_url = format_gdrive_url(raw_foto)
+            no_wa = row.get("No_WhatsApp", "628123456789")
+
+            with cols[index % 3]:
+              with st.container(border=True):
+                try:
+                  st.image(foto_url, use_container_width=True)
+                except:
+                  st.image(
+                      "https://via.placeholder.com/300x200?text=Gagal+Memuat+Foto",
+                      use_container_width=True,
+                  )
+
+                st.markdown(f"**{nama_prod}**")
+                st.caption(f"📂 {kategori} | 📦 Stok: {stok}")
+                st.markdown(
+                    f"<span style='color: #059669; font-weight: 700;'>Rp"
+                    f" {float(harga):,.0f}</span>",
+                    unsafe_allow_html=True,
+                )
+                st.write(f"*{desc}*")
+
+                wa_link = f"https://wa.me/{no_wa}?text=Halo,%20saya%20tertarik%20dengan%20produk%20{nama_prod}%20dari%20{nama_sekolah_kini}."
+                st.markdown(
+                    f'<a href="{wa_link}" target="_blank"><button'
+                    " style='width: 100%; background-color: #25d366; color:"
+                    " white; border: none; padding: 8px 12px; border-radius:"
+                    " 8px; font-weight: bold; cursor: pointer;'>💬 Pesan via"
+                    " WhatsApp</button></a>",
+                    unsafe_allow_html=True,
+                )
+        else:
+          st.info("Belum ada produk yang terdaftar di Etalase Digital.")
