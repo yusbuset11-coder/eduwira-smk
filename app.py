@@ -21,7 +21,7 @@ def get_gspread_client():
   return client
 
 
-@st.cache_data(ttl=300)  # Menyimpan cache selama 5 menit
+@st.cache_data(ttl=300)
 def get_school_records(spreadsheet_id, sheet_name):
   try:
     client = get_gspread_client()
@@ -82,7 +82,6 @@ def format_gdrive_url(url):
   url_str = str(url).strip()
   file_id = ""
 
-  # Ekstrak File ID dari berbagai bentuk link Google Drive
   if "drive.google.com" in url_str:
     if "/d/" in url_str:
       try:
@@ -95,10 +94,8 @@ def format_gdrive_url(url):
       except:
         pass
   elif len(url_str) > 20 and "/" not in url_str:
-    # Jika yang diinput langsung ID filenya saja
     file_id = url_str
 
-  # Gunakan direct link Google UserContent agar mulus di Streamlit
   if file_id:
     return f"https://lh3.googleusercontent.com/d/{file_id}"
 
@@ -185,132 +182,258 @@ st.markdown(
     unsafe_allow_html=True,
 )
 
-# --- KONDISI 1: BELUM LOGIN ---
+# --- KONDISI 1: BELUM LOGIN (DIPISAH ANTARA PUBLIK & LOGIN ADMIN) ---
 if not st.session_state.logged_in:
-  st.markdown(
-      """
-        <div style="background: #111827; padding: 28px 32px; border-radius: 16px; border: 1px solid #1f2937; width: 100%; margin: 0 auto 20px auto; box-shadow: 0 10px 30px rgba(0,0,0,0.5); text-align: center;">
-            <div style="color: #818cf8; font-size: 20px; font-weight: 700; margin-bottom: 8px;">🔐 Login Portal EDUWIRA</div>
-            <div style="color: #e2e8f0; font-size: 16px; font-weight: 500;">Silakan masukkan <b>Token</b> atau <b>Email</b> Anda untuk mengakses ekosistem.</div>
-        </div>
-        """,
-      unsafe_allow_html=True,
+  mode_akses = st.radio(
+      "Pilih Mode Akses:",
+      [
+          "🛍️ Lihat Etalase Digital (Publik / Pembeli)",
+          "🔐 Login Admin / Pengelola Sekolah",
+      ],
+      horizontal=True,
   )
 
-  col1, col2, col3 = st.columns([0.5, 3, 0.5])
-  with col2:
-    with st.form("form_login_gs"):
-      input_user = st.text_input(
-          "Token / Email",
-          placeholder=(
-              "Contoh: EDU123 atau yustinussetyanta08@dinas.belajar.id"
-          ),
-      )
-      st.markdown("<div style='height: 8px;'></div>", unsafe_allow_html=True)
-      btn_masuk = st.form_submit_button(
-          "🚀 Masuk Ekosistem", use_container_width=True
-      )
+  st.markdown("<div style='height: 16px;'></div>", unsafe_allow_html=True)
 
-      if btn_masuk:
-        if not input_user:
-          st.warning("⚠️ Mohon masukkan Token atau Email terlebih dahulu.")
+  # --- MODE PUBLIK: ETALASE DIGITAL UNTUK PEMBELI ---
+  if "🛍️" in mode_akses:
+    st.markdown(
+        """
+        <div style="background: #111827; padding: 20px 24px; border-radius: 14px; border: 1px solid #1f2937; margin-bottom: 20px; text-align: center;">
+            <div style="color: #38bdf8; font-size: 22px; font-weight: 700; margin-bottom: 6px;">🛍️ Etalase Produk & Layanan TeFa SMK</div>
+            <div style="color: #94a3b8; font-size: 15px;">Silakan pilih unit SMK Binaan untuk melihat produk dan langsung memesan via WhatsApp.</div>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+    try:
+      df_reg_pub = get_school_records(
+          MASTER_SPREADSHEET_ID, "DATABASE_MASTER_REGISTRY"
+      )
+    except Exception:
+      df_reg_pub = pd.DataFrame()
+
+    if not df_reg_pub.empty:
+      df_reg_pub.columns = df_reg_pub.columns.str.strip()
+      cols_lower_pub = {c.lower(): c for c in df_reg_pub.columns}
+      role_col_pub = cols_lower_pub.get("role", None)
+
+      if role_col_pub:
+        df_sekolah_pub = df_reg_pub[
+            df_reg_pub[role_col_pub].astype(str).str.strip().str.lower()
+            != "pengawas"
+        ]
+      else:
+        df_sekolah_pub = df_reg_pub
+
+      sch_col_name = cols_lower_pub.get("nama_sekolah", df_reg_pub.columns[1])
+      sheet_col_id = cols_lower_pub.get("spreadsheet_id", None)
+
+      dict_sekolah_pub = {}
+      for _, row in df_sekolah_pub.iterrows():
+        s_name = str(row.get(sch_col_name, ""))
+        s_id = str(row.get(sheet_col_id, "")) if sheet_col_id else ""
+        if s_name and s_id:
+          dict_sekolah_pub[s_name] = s_id
+
+      if dict_sekolah_pub:
+        pilih_unit_pub = st.selectbox(
+            "Pilih Unit Sekolah Binaan", list(dict_sekolah_pub.keys())
+        )
+        target_sheet_pub = dict_sekolah_pub[pilih_unit_pub]
+
+        st.markdown("---")
+        st.markdown(f"#### 📦 Katalog Produk: {pilih_unit_pub}")
+
+        df_p_pub = get_school_records(target_sheet_pub, "MASTER_PRODUK")
+
+        if not df_p_pub.empty:
+          df_p_pub.columns = df_p_pub.columns.str.strip()
+          cols = st.columns(3)
+
+          for index, row in df_p_pub.iterrows():
+            nama_prod = row.get("Nama_Produk", "Produk Vokasi")
+            kategori = row.get("Kategori", "Umum")
+            harga = row.get("Harga", 0)
+            stok = row.get("Jumlah_Stok", 0)
+            desc = row.get(
+                "Deskripsi_Produk",
+                "Produk berkualitas hasil TeFa SMK.",
+            )
+
+            raw_foto = row.get("Foto_Produk", "")
+            foto_url = format_gdrive_url(raw_foto)
+            no_wa = row.get("No_WhatsApp", "628123456789")
+
+            with cols[index % 3]:
+              with st.container(border=True):
+                try:
+                  st.image(foto_url, use_container_width=True)
+                except:
+                  st.image(
+                      "https://via.placeholder.com/300x200?text=Gagal+Memuat+Foto",
+                      use_container_width=True,
+                  )
+
+                st.markdown(f"**{nama_prod}**")
+                st.caption(f"📂 {kategori} | 📦 Stok: {stok}")
+                try:
+                  harga_val = float(harga)
+                except:
+                  harga_val = 0
+                st.markdown(
+                    f"<span style='color: #059669; font-weight: 700;'>Rp"
+                    f" {harga_val:,.0f}</span>",
+                    unsafe_allow_html=True,
+                )
+                st.write(f"*{desc}*")
+
+                wa_link = f"https://wa.me/{no_wa}?text=Halo,%20saya%20tertarik%20dengan%20produk%20{nama_prod}%20dari%20{pilih_unit_pub}."
+                st.markdown(
+                    f'<a href="{wa_link}" target="_blank"><button'
+                    " style='width: 100%; background-color: #25d366; color:"
+                    " white; border: none; padding: 8px 12px; border-radius:"
+                    " 8px; font-weight: bold; cursor: pointer;'>💬 Pesan via"
+                    " WhatsApp</button></a>",
+                    unsafe_allow_html=True,
+                )
         else:
-          with st.spinner("Memverifikasi data dari Google Sheets..."):
-            try:
-              df_reg = get_school_records(
-                  MASTER_SPREADSHEET_ID, "DATABASE_MASTER_REGISTRY"
-              )
-            except Exception as e:
-              df_reg = pd.DataFrame()
-              st.error(f"Gagal membaca Google Sheets: {e}")
+          st.info(
+              f"Belum ada produk yang terdaftar di Etalase {pilih_unit_pub}."
+          )
+      else:
+        st.warning("Daftar sekolah belum tersedia pada registry.")
+    else:
+      st.error("Gagal memuat data master registry sekolah.")
 
-          if not df_reg.empty:
-            df_reg.columns = df_reg.columns.str.strip()
-            cols_lower = {c.lower(): c for c in df_reg.columns}
+  # --- MODE LOGIN: KHUSUS PENGELOLA / ADMIN SEKOLAH ---
+  else:
+    st.markdown(
+        """
+        <div style="background: #111827; padding: 28px 32px; border-radius: 16px; border: 1px solid #1f2937; width: 100%; margin: 0 auto 20px auto; box-shadow: 0 10px 30px rgba(0,0,0,0.5); text-align: center;">
+            <div style="color: #818cf8; font-size: 20px; font-weight: 700; margin-bottom: 8px;">🔐 Login Portal Pengelola EDUWIRA</div>
+            <div style="color: #e2e8f0; font-size: 16px; font-weight: 500;">Silakan masukkan <b>Token</b> atau <b>Email</b> Anda untuk mengelola kasir dan laporan.</div>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
 
-            token_col = cols_lower.get(
-                "token_unik",
-                cols_lower.get("token", df_reg.columns[0]),
-            )
-            email_col = cols_lower.get(
-                "email",
-                (
-                    df_reg.columns[3]
-                    if len(df_reg.columns) > 3
-                    else df_reg.columns[1]
-                ),
-            )
-            admin_col = cols_lower.get(
-                "admin_pj",
-                cols_lower.get("admin_nama", df_reg.columns[2]),
-            )
-            sekolah_col = cols_lower.get("nama_sekolah", df_reg.columns[1])
-            role_col = cols_lower.get("role", None)
-            sheet_col = cols_lower.get("spreadsheet_id", None)
+    col1, col2, col3 = st.columns([0.5, 3, 0.5])
+    with col2:
+      with st.form("form_login_gs"):
+        input_user = st.text_input(
+            "Token / Email",
+            placeholder=(
+                "Contoh: EDU123 atau yustinussetyanta08@dinas.belajar.id"
+            ),
+        )
+        st.markdown("<div style='height: 8px;'></div>", unsafe_allow_html=True)
+        btn_masuk = st.form_submit_button(
+            "🚀 Masuk Ekosistem", use_container_width=True
+        )
 
-            matched = df_reg[
-                (
-                    df_reg[token_col]
-                    .astype(str)
-                    .str.strip()
-                    .str.lower()
-                    == input_user.strip().lower()
+        if btn_masuk:
+          if not input_user:
+            st.warning("⚠️ Mohon masukkan Token atau Email terlebih dahulu.")
+          else:
+            with st.spinner("Memverifikasi data dari Google Sheets..."):
+              try:
+                df_reg = get_school_records(
+                    MASTER_SPREADSHEET_ID, "DATABASE_MASTER_REGISTRY"
                 )
-                | (
-                    df_reg[email_col]
-                    .astype(str)
-                    .str.strip()
-                    .str.lower()
-                    == input_user.strip().lower()
+              except Exception as e:
+                df_reg = pd.DataFrame()
+                st.error(f"Gagal membaca Google Sheets: {e}")
+
+            if not df_reg.empty:
+              df_reg.columns = df_reg.columns.str.strip()
+              cols_lower = {c.lower(): c for c in df_reg.columns}
+
+              token_col = cols_lower.get(
+                  "token_unik",
+                  cols_lower.get("token", df_reg.columns[0]),
+              )
+              email_col = cols_lower.get(
+                  "email",
+                  (
+                      df_reg.columns[3]
+                      if len(df_reg.columns) > 3
+                      else df_reg.columns[1]
+                  ),
+              )
+              admin_col = cols_lower.get(
+                  "admin_pj",
+                  cols_lower.get("admin_nama", df_reg.columns[2]),
+              )
+              sekolah_col = cols_lower.get("nama_sekolah", df_reg.columns[1])
+              role_col = cols_lower.get("role", None)
+              sheet_col = cols_lower.get("spreadsheet_id", None)
+
+              matched = df_reg[
+                  (
+                      df_reg[token_col]
+                      .astype(str)
+                      .str.strip()
+                      .str.lower()
+                      == input_user.strip().lower()
+                  )
+                  | (
+                      df_reg[email_col]
+                      .astype(str)
+                      .str.strip()
+                      .str.lower()
+                      == input_user.strip().lower()
+                  )
+              ]
+
+              if not matched.empty:
+                row = matched.iloc[0]
+                st.session_state.logged_in = True
+                st.session_state.admin_nama = str(
+                    row.get(admin_col, "Administrator")
                 )
-            ]
+                st.session_state.nama_sekolah = str(
+                    row.get(sekolah_col, "Pusat Pengawas")
+                )
+                st.session_state.spreadsheet_id = (
+                    str(row.get(sheet_col, "")) if sheet_col else ""
+                )
 
-            if not matched.empty:
-              row = matched.iloc[0]
-              st.session_state.logged_in = True
-              st.session_state.admin_nama = str(
-                  row.get(admin_col, "Administrator")
-              )
-              st.session_state.nama_sekolah = str(
-                  row.get(sekolah_col, "Pusat Pengawas")
-              )
-              st.session_state.spreadsheet_id = (
-                  str(row.get(sheet_col, "")) if sheet_col else ""
-              )
-
-              r_val = (
-                  str(row.get(role_col, "")).strip().lower()
-                  if role_col
-                  else ""
-              )
-              if not r_val:
-                if (
-                    "dinas" in input_user.lower()
-                    or "yustinus" in st.session_state.admin_nama.lower()
-                ):
-                  st.session_state.role = "Pengawas"
+                r_val = (
+                    str(row.get(role_col, "")).strip().lower()
+                    if role_col
+                    else ""
+                )
+                if not r_val:
+                  if (
+                      "dinas" in input_user.lower()
+                      or "yustinus" in st.session_state.admin_nama.lower()
+                  ):
+                    st.session_state.role = "Pengawas"
+                  else:
+                    st.session_state.role = "Sekolah"
                 else:
-                  st.session_state.role = "Sekolah"
-              else:
-                st.session_state.role = r_val.capitalize()
+                  st.session_state.role = r_val.capitalize()
 
-              st.success(
-                  f"🎉 Berhasil masuk! Selamat datang,"
-                  f" {st.session_state.admin_nama}"
-                  f" ({st.session_state.nama_sekolah})."
-              )
-              st.rerun()
+                st.success(
+                    f"🎉 Berhasil masuk! Selamat datang,"
+                    f" {st.session_state.admin_nama}"
+                    f" ({st.session_state.nama_sekolah})."
+                )
+                st.rerun()
+              else:
+                st.error(
+                    "❌ Token atau Email tidak ditemukan di"
+                    " `DATABASE_MASTER_REGISTRY`."
+                )
             else:
               st.error(
-                  "❌ Token atau Email tidak ditemukan di"
-                  " `DATABASE_MASTER_REGISTRY`."
+                  "❌ Data `DATABASE_MASTER_REGISTRY` kosong atau gagal dimuat."
               )
-          else:
-            st.error("❌ Data `DATABASE_MASTER_REGISTRY` kosong atau gagal dimuat.")
 
-# --- KONDISI 2: SUDAH LOGIN ---
+# --- KONDISI 2: SUDAH LOGIN (TETAP SEPERTI SEMULA) ---
 else:
-  # --- SIDEBAR INFORMASI AKUN & NAVIGASI ---
   st.sidebar.markdown(f"👤 **Admin:** {st.session_state.admin_nama}")
 
   unit_tampil = (
@@ -466,7 +589,6 @@ else:
 
         st.markdown("---")
 
-        # --- FILTER PILIH SEKOLAH ---
         st.markdown("#### 🔍 Filter Performa Detail SMK Binaan")
         daftar_nama_sekolah = list(dict_sekolah_sheet.keys())
         pilih_filter_sekolah = st.selectbox(
@@ -662,7 +784,6 @@ else:
               " Spreadsheet!"
           )
 
-          # --- PRATINJAU STRUK BERBASIS HTML MODERN (VISUAL KARTU RAPI) ---
           struk_html = f"""
                     <!DOCTYPE html>
                     <html>
@@ -1074,9 +1195,13 @@ TOTAL BAYAR  : Rp {t['total']:,.0f}
 
                 st.markdown(f"**{nama_prod}**")
                 st.caption(f"📂 {kategori} | 📦 Stok: {stok}")
+                try:
+                  harga_val = float(harga)
+                except:
+                  harga_val = 0
                 st.markdown(
                     f"<span style='color: #059669; font-weight: 700;'>Rp"
-                    f" {float(harga):,.0f}</span>",
+                    f" {harga_val:,.0f}</span>",
                     unsafe_allow_html=True,
                 )
                 st.write(f"*{desc}*")
