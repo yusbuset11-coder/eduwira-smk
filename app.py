@@ -299,13 +299,32 @@ if not st.session_state.logged_in:
                     unsafe_allow_html=True,
                 )
         else:
-          st.info(
-              f"Belum ada produk yang terdaftar di Etalase {pilih_unit_pub}."
+          st.markdown(
+              f"""
+              <div style="background-color: #111827; border: 1px solid #374151; padding: 14px 18px; border-radius: 10px; color: #ffffff;">
+                  Belum ada produk yang terdaftar di Etalase {pilih_unit_pub}.
+              </div>
+              """,
+              unsafe_allow_html=True,
           )
       else:
-        st.warning("Daftar sekolah belum tersedia pada registry.")
+        st.markdown(
+            """
+            <div style="background-color: #111827; border: 1px solid #7f1d1d; padding: 14px 18px; border-radius: 10px; color: #f87171;">
+                Daftar sekolah belum tersedia pada registry.
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
     else:
-      st.error("Gagal memuat data master registry sekolah.")
+      st.markdown(
+          """
+          <div style="background-color: #111827; border: 1px solid #7f1d1d; padding: 14px 18px; border-radius: 10px; color: #f87171;">
+              Gagal memuat data master registry sekolah.
+          </div>
+          """,
+          unsafe_allow_html=True,
+      )
 
   # --- MODE LOGIN: KHUSUS PENGELOLA / ADMIN SEKOLAH ---
   else:
@@ -335,7 +354,14 @@ if not st.session_state.logged_in:
 
         if btn_masuk:
           if not input_user:
-            st.warning("⚠️ Mohon masukkan Token atau Email terlebih dahulu.")
+            st.markdown(
+                """
+                <div style="background-color: #111827; border: 1px solid #7f1d1d; padding: 10px 14px; border-radius: 8px; color: #f87171; margin-top: 10px;">
+                    ⚠️ Mohon masukkan Token atau Email terlebih dahulu.
+                </div>
+                """,
+                unsafe_allow_html=True,
+            )
           else:
             with st.spinner("Memverifikasi data dari Google Sheets..."):
               try:
@@ -423,16 +449,25 @@ if not st.session_state.logged_in:
                 )
                 st.rerun()
               else:
-                st.error(
-                    "❌ Token atau Email tidak ditemukan di"
-                    " `DATABASE_MASTER_REGISTRY`."
+                st.markdown(
+                    """
+                    <div style="background-color: #111827; border: 1px solid #7f1d1d; padding: 10px 14px; border-radius: 8px; color: #f87171; margin-top: 10px;">
+                        ❌ Token atau Email tidak ditemukan di DATABASE_MASTER_REGISTRY.
+                    </div>
+                    """,
+                    unsafe_allow_html=True,
                 )
             else:
-              st.error(
-                  "❌ Data `DATABASE_MASTER_REGISTRY` kosong atau gagal dimuat."
+              st.markdown(
+                  """
+                  <div style="background-color: #111827; border: 1px solid #7f1d1d; padding: 10px 14px; border-radius: 8px; color: #f87171; margin-top: 10px;">
+                      ❌ Data DATABASE_MASTER_REGISTRY kosong atau gagal dimuat.
+                  </div>
+                  """,
+                  unsafe_allow_html=True,
               )
 
-# --- KONDISI 2: SUDAH LOGIN (TETAP SEPERTI SEMULA) ---
+# --- KONDISI 2: SUDAH LOGIN ---
 else:
   st.sidebar.markdown(f"👤 **Admin:** {st.session_state.admin_nama}")
 
@@ -642,13 +677,22 @@ else:
               with col_d2:
                 st.metric("Total Unit Terjual", f"{unit_target} Unit")
             else:
-              st.info(
-                  f"ℹ️ Belum ada data transaksi yang tercatat untuk unit"
-                  f" {pilih_filter_sekolah}."
+              st.markdown(
+                  f"""
+                  <div style="background-color: #111827; border: 1px solid #374151; padding: 14px 18px; border-radius: 10px; color: #ffffff;">
+                      ℹ️ Belum ada data transaksi yang tercatat untuk unit {pilih_filter_sekolah}.
+                  </div>
+                  """,
+                  unsafe_allow_html=True,
               )
           else:
-            st.warning(
-                "⚠️ Spreadsheet ID untuk sekolah ini belum dikonfigurasi."
+            st.markdown(
+                """
+                <div style="background-color: #111827; border: 1px solid #7f1d1d; padding: 14px 18px; border-radius: 10px; color: #f87171;">
+                    ⚠️ Spreadsheet ID untuk sekolah ini belum dikonfigurasi.
+                </div>
+                """,
+                unsafe_allow_html=True,
             )
 
         st.markdown("---")
@@ -658,9 +702,23 @@ else:
           df_summary.index = range(1, len(df_summary) + 1)
           st.dataframe(df_summary, use_container_width=True)
         else:
-          st.info("Belum ada data rekapitulasi sekolah.")
+          st.markdown(
+              """
+              <div style="background-color: #111827; border: 1px solid #374151; padding: 14px 18px; border-radius: 10px; color: #ffffff;">
+                  Belum ada data rekapitulasi sekolah.
+              </div>
+              """,
+              unsafe_allow_html=True,
+          )
       else:
-        st.warning("Tabel `DATABASE_MASTER_REGISTRY` kosong.")
+        st.markdown(
+            """
+            <div style="background-color: #111827; border: 1px solid #7f1d1d; padding: 14px 18px; border-radius: 10px; color: #f87171;">
+                Tabel DATABASE_MASTER_REGISTRY kosong.
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
     elif menu == "🏫 Daftar SMK Binaan":
       st.markdown("### 🏫 Daftar Master Registry SMK Binaan (Google Sheets)")
       st.write("Daftar akun sekolah binaan beserta Spreadsheet ID masing-masing.")
@@ -677,7 +735,14 @@ else:
         df_reg.index = range(1, len(df_reg) + 1)
         st.dataframe(df_reg, use_container_width=True)
       else:
-        st.info("Data registry belum tersedia.")
+        st.markdown(
+            """
+            <div style="background-color: #111827; border: 1px solid #374151; padding: 14px 18px; border-radius: 10px; color: #ffffff;">
+                Data registry belum tersedia.
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
 
   # ==========================================
   # LOGIC KELOMPOK 2: MENU SEKOLAH MANDIRI
@@ -687,9 +752,13 @@ else:
     active_spreadsheet_id = st.session_state.spreadsheet_id
 
     if not active_spreadsheet_id:
-      st.error(
-          "❌ `spreadsheet_id` belum diatur untuk sekolah ini di tabel"
-          " `DATABASE_MASTER_REGISTRY`. Hubungi Pengawas."
+      st.markdown(
+          """
+          <div style="background-color: #111827; border: 1px solid #7f1d1d; padding: 16px 20px; border-radius: 12px; color: #f87171;">
+              ❌ <code>spreadsheet_id</code> belum diatur untuk sekolah ini di tabel <code>DATABASE_MASTER_REGISTRY</code>. Hubungi Pengawas.
+          </div>
+          """,
+          unsafe_allow_html=True,
       )
     else:
       if menu == "🏠 Dashboard Utama":
@@ -699,10 +768,15 @@ else:
             f" {nama_sekolah_kini}</div>",
             unsafe_allow_html=True,
         )
-        st.info(
-            "Katalog produk dikelola langsung melalui Google Spreadsheet pada"
-            " sheet **MASTER_PRODUK**. Data akan otomatis sinkron ke"
-            " aplikasi."
+        
+        # [DIPERBARUI]: Warna teks putih & kuning jelas terbaca
+        st.markdown(
+            """
+            <div style="background-color: #111827; border: 1px solid #374151; padding: 16px 20px; border-radius: 12px; color: #ffffff; margin-bottom: 16px;">
+                Katalog produk dikelola langsung melalui Google Spreadsheet pada sheet <span style="color: #facc15; font-weight: 700;">MASTER_PRODUK</span>. Data akan otomatis sinkron ke aplikasi.
+            </div>
+            """,
+            unsafe_allow_html=True,
         )
 
         df_p = get_school_records(active_spreadsheet_id, "MASTER_PRODUK")
@@ -749,11 +823,15 @@ else:
             f" **MASTER_PRODUK** di Google Spreadsheet unit"
             f" **{nama_sekolah_kini}**."
         )
-        st.info(
-            "💡 *Tips: Anda cukup mengisi atau memperbarui data produk"
-            " langsung di Google Spreadsheet Anda pada sheet `MASTER_PRODUK`"
-            " (Kolom: Kategori | Nama_Produk | Harga | Jumlah_Stok |"
-            " Deskripsi_Produk | Foto_Produk | No_WhatsApp).* "
+        
+        # [DIPERBARUI]: Warna teks putih & kuning jelas terbaca
+        st.markdown(
+            """
+            <div style="background-color: #111827; border: 1px solid #374151; padding: 16px 20px; border-radius: 12px; color: #ffffff; margin-bottom: 16px; line-height: 1.5;">
+                💡 <b style="color: #facc15;">Tips:</b> Anda cukup mengisi atau memperbarui data produk langsung di Google Spreadsheet Anda pada sheet <span style="color: #facc15; font-weight: 700;">MASTER_PRODUK</span> (Kolom: <span style="color: #93c5fd;">Kategori | Nama_Produk | Harga | Jumlah_Stok | Deskripsi_Produk | Foto_Produk | No_WhatsApp</span>).
+            </div>
+            """,
+            unsafe_allow_html=True,
         )
 
         df_p = get_school_records(active_spreadsheet_id, "MASTER_PRODUK")
@@ -763,9 +841,13 @@ else:
           df_p.index = range(1, len(df_p) + 1)
           st.dataframe(df_p, use_container_width=True)
         else:
-          st.warning(
-              "⚠️ Belum ada produk di sheet `MASTER_PRODUK` pada Google"
-              " Spreadsheet sekolah Anda."
+          st.markdown(
+              """
+              <div style="background-color: #111827; border: 1px solid #7f1d1d; padding: 14px 18px; border-radius: 10px; color: #f87171;">
+                  ⚠️ Belum ada produk di sheet <code>MASTER_PRODUK</code> pada Google Spreadsheet sekolah Anda.
+              </div>
+              """,
+              unsafe_allow_html=True,
           )
 
       elif menu == "💰 Catat Transaksi / Kasir":
@@ -957,8 +1039,13 @@ TOTAL BAYAR  : Rp {t['total']:,.0f}
             list_produk = df_filtered[name_key].tolist()
 
             if not list_produk:
-              st.warning(
-                  f"⚠️ Tidak ada produk ditemukan pada kategori '{pilih_kategori}'."
+              st.markdown(
+                  f"""
+                  <div style="background-color: #111827; border: 1px solid #7f1d1d; padding: 14px 18px; border-radius: 10px; color: #f87171;">
+                      ⚠️ Tidak ada produk ditemukan pada kategori '{pilih_kategori}'.
+                  </div>
+                  """,
+                  unsafe_allow_html=True,
               )
             else:
               pilih_produk = st.selectbox(
@@ -1007,17 +1094,32 @@ TOTAL BAYAR  : Rp {t['total']:,.0f}
               except (ValueError, TypeError):
                 stok_tersedia = 0
 
+              # [DIPERBARUI]: Warna teks putih & kuning jelas terbaca untuk Harga Standar & Stok
               if harga_default == 0:
-                st.warning(
-                    "⚠ Produk/Jasa ini belum memiliki patokan harga tetap di"
-                    " Master Produk. Silakan masukkan harga secara manual pada"
-                    " form di bawah."
+                st.markdown(
+                    """
+                    <div style="background-color: #111827; border: 1px solid #7f1d1d; padding: 14px 18px; border-radius: 10px; color: #f87171; margin-bottom: 10px;">
+                        ⚠ Produk/Jasa ini belum memiliki patokan harga tetap di Master Produk. Silakan masukkan harga secara manual pada form di bawah.
+                    </div>
+                    """,
+                    unsafe_allow_html=True,
                 )
-                st.info(f"Stok Tersedia: {stok_tersedia}")
+                st.markdown(
+                    f"""
+                    <div style="background-color: #111827; border: 1px solid #374151; padding: 12px 18px; border-radius: 10px; color: #facc15; font-weight: 600;">
+                        Stok Tersedia: <span style="color: #ffffff;">{stok_tersedia}</span>
+                    </div>
+                    """,
+                    unsafe_allow_html=True,
+                )
               else:
-                st.info(
-                    f"Harga Standar: Rp {harga_default:,.0f} | Stok Tersedia:"
-                    f" {stok_tersedia}"
+                st.markdown(
+                    f"""
+                    <div style="background-color: #111827; border: 1px solid #374151; padding: 14px 18px; border-radius: 10px; color: #facc15; font-weight: 600; margin-bottom: 16px;">
+                        Harga Standar: <span style="color: #ffffff;">Rp {harga_default:,.0f}</span> | Stok Tersedia: <span style="color: #ffffff;">{stok_tersedia}</span>
+                    </div>
+                    """,
+                    unsafe_allow_html=True,
                 )
 
               with st.form("form_transaksi_gs"):
@@ -1095,9 +1197,13 @@ TOTAL BAYAR  : Rp {t['total']:,.0f}
                   else:
                     st.error(f"❌ Gagal mencatat transaksi: {err_msg}")
           else:
-            st.warning(
-                "⚠️ Belum ada data produk di sheet `MASTER_PRODUK` pada Google"
-                " Spreadsheet Anda."
+            st.markdown(
+                """
+                <div style="background-color: #111827; border: 1px solid #7f1d1d; padding: 14px 18px; border-radius: 10px; color: #f87171;">
+                    ⚠️ Belum ada data produk di sheet <code>MASTER_PRODUK</code> pada Google Spreadsheet Anda.
+                </div>
+                """,
+                unsafe_allow_html=True,
             )
 
       elif menu == "📊 Laporan & Analitik":
@@ -1149,9 +1255,13 @@ TOTAL BAYAR  : Rp {t['total']:,.0f}
           with col2:
             st.metric("Total Unit Terjual", f"{total_item_sold} Unit")
         else:
-          st.info(
-              "ℹ️ Belum ada data transaksi yang tercatat di Google Spreadsheet"
-              " Anda (atau sheet 'TRANSAKSI' belum tersedia)."
+          st.markdown(
+              """
+              <div style="background-color: #111827; border: 1px solid #374151; padding: 14px 18px; border-radius: 10px; color: #ffffff;">
+                  ℹ️ Belum ada data transaksi yang tercatat di Google Spreadsheet Anda (atau sheet 'TRANSAKSI' belum tersedia).
+              </div>
+              """,
+              unsafe_allow_html=True,
           )
 
       elif menu == "🛍️ Etalase Digital":
@@ -1216,4 +1326,11 @@ TOTAL BAYAR  : Rp {t['total']:,.0f}
                     unsafe_allow_html=True,
                 )
         else:
-          st.info("Belum ada produk yang terdaftar di Etalase Digital.")
+          st.markdown(
+              """
+              <div style="background-color: #111827; border: 1px solid #374151; padding: 14px 18px; border-radius: 10px; color: #ffffff;">
+                  Belum ada produk yang terdaftar di Etalase Digital.
+              </div>
+              """,
+              unsafe_allow_html=True,
+          )
